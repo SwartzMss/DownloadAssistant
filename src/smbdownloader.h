@@ -1,0 +1,71 @@
+#ifndef SMBDOWNLOADER_H
+#define SMBDOWNLOADER_H
+
+#include <QObject>
+#include <QNetworkAccessManager>
+#include <QNetworkReply>
+#include <QFile>
+#include <QTimer>
+#include <QDateTime>
+#include "downloadtask.h"
+
+class SmbDownloader : public QObject
+{
+    Q_OBJECT
+
+public:
+    explicit SmbDownloader(QObject *parent = nullptr);
+    ~SmbDownloader();
+
+    // 下载控制
+    bool startDownload(DownloadTask *task);
+    void pauseDownload(DownloadTask *task);
+    void resumeDownload(DownloadTask *task);
+    void cancelDownload(DownloadTask *task);
+    
+    // 状态查询
+    bool isDownloading(DownloadTask *task) const;
+    QList<DownloadTask*> activeDownloads() const;
+
+signals:
+    void downloadStarted(DownloadTask *task);
+    void downloadPaused(DownloadTask *task);
+    void downloadResumed(DownloadTask *task);
+    void downloadCancelled(DownloadTask *task);
+    void downloadCompleted(DownloadTask *task);
+    void downloadFailed(DownloadTask *task, const QString &error);
+    void downloadProgress(DownloadTask *task, qint64 bytesReceived, qint64 bytesTotal);
+
+private slots:
+    void onDownloadProgress(qint64 bytesReceived, qint64 bytesTotal);
+    void onDownloadFinished();
+    void onNetworkError(QNetworkReply::NetworkError error);
+    void onSslErrors(const QList<QSslError> &errors);
+    void updateSpeed();
+
+private:
+    struct DownloadInfo {
+        DownloadTask *task;
+        QNetworkReply *reply;
+        QFile *file;
+        QTimer *speedTimer;
+        qint64 lastBytesReceived;
+        qint64 lastSpeedUpdate;
+        bool supportsResume;
+        qint64 downloadedBytes;
+        qint64 totalBytes;
+        QDateTime startTime;
+    };
+
+    QNetworkAccessManager *m_networkManager;
+    QMap<DownloadTask*, DownloadInfo*> m_activeDownloads;
+    
+    // 辅助方法
+    DownloadInfo* findDownloadInfo(DownloadTask *task);
+    void cleanupDownload(DownloadTask *task);
+    bool setupResumeDownload(DownloadTask *task, DownloadInfo *info);
+    void updateTaskProgress(DownloadTask *task, qint64 bytesReceived, qint64 bytesTotal);
+    QString formatBytes(qint64 bytes) const;
+};
+
+#endif // SMBDOWNLOADER_H 
