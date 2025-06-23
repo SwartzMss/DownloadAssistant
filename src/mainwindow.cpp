@@ -401,7 +401,7 @@ void MainWindow::updateTableRow(int row, DownloadTask *task)
     // 进度
     QProgressBar *progressBar = qobject_cast<QProgressBar*>(ui->taskTable->cellWidget(row, 3));
     if (progressBar) {
-        progressBar->setValue(static_cast<int>(task->progress() * 100));
+        progressBar->setValue(static_cast<int>(task->progress()));
     }
     
     // 速度
