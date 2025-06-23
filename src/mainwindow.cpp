@@ -9,6 +9,9 @@
 #include <QApplication>
 #include <QCheckBox>
 #include <QProgressBar>
+#include <QSystemTrayIcon>
+#include <QMenu>
+#include <QCloseEvent>
 #include <algorithm>
 #include <QSet>
 #include "logger.h"
@@ -19,6 +22,8 @@ MainWindow::MainWindow(QWidget *parent)
     , m_downloadManager(new DownloadManager(this))
     , m_updateTimer(new QTimer(this))
     , m_taskModel(new QStandardItemModel(this))
+    , m_trayIcon(nullptr)
+    , m_trayMenu(nullptr)
 {
     LOG_INFO("MainWindow 初始化开始");
     
@@ -52,6 +57,9 @@ MainWindow::MainWindow(QWidget *parent)
     
     // 加载任务
     loadTasks();
+
+    createTrayMenu();
+    createTrayIcon();
     
     LOG_INFO("MainWindow 初始化完成");
 }
@@ -620,4 +628,43 @@ void MainWindow::onTaskProgress(const QString &taskId, qint64 bytesReceived, qin
             updateTableRow(row, task);
         }
     }
-} 
+}
+
+void MainWindow::createTrayMenu()
+{
+    m_trayMenu = new QMenu(this);
+    QAction *showAction = m_trayMenu->addAction(tr("显示窗口"));
+    connect(showAction, &QAction::triggered, this, &QWidget::showNormal);
+    QAction *quitAction = m_trayMenu->addAction(tr("退出"));
+    connect(quitAction, &QAction::triggered, qApp, &QApplication::quit);
+}
+
+void MainWindow::createTrayIcon()
+{
+    m_trayIcon = new QSystemTrayIcon(this);
+    m_trayIcon->setIcon(windowIcon());
+    m_trayIcon->setContextMenu(m_trayMenu);
+    connect(m_trayIcon, &QSystemTrayIcon::activated, this, &MainWindow::onTrayIconActivated);
+    m_trayIcon->show();
+}
+
+void MainWindow::onTrayIconActivated(QSystemTrayIcon::ActivationReason reason)
+{
+    if (reason == QSystemTrayIcon::Trigger || reason == QSystemTrayIcon::DoubleClick) {
+        if (isHidden()) {
+            showNormal();
+        } else {
+            hide();
+        }
+    }
+}
+
+void MainWindow::closeEvent(QCloseEvent *event)
+{
+    if (m_trayIcon && m_trayIcon->isVisible()) {
+        hide();
+        event->ignore();
+    } else {
+        QMainWindow::closeEvent(event);
+    }
+}
