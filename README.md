@@ -80,6 +80,23 @@ DownloadAssistant/
 - [ ] 添加下载历史记录
 - [ ] 支持批量导入下载任务
 
+## 构建指南 / Build Instructions
+
+本项目依赖 [libsmbclient](https://www.samba.org/samba/docs/current/man-html/libsmbclient.7.html) 实现 SMB 功能。在 Windows 平台上可通过 [vcpkg](https://github.com/microsoft/vcpkg) 或使用预编译二进制包安装。
+
+**Windows 示例步骤：**
+
+1. 安装并初始化 `vcpkg`
+2. 运行 `vcpkg install libsmbclient:x64-windows`
+3. 在 `DownloadAssistant.pro` 中加入 libsmbclient 的 `INCLUDEPATH` 和 `LIBS` 路径，例如：
+
+   ```pro
+   INCLUDEPATH += C:/vcpkg/installed/x64-windows/include
+   LIBS += -LC:/vcpkg/installed/x64-windows/lib -lsmbclient
+   ```
+
+根据实际安装位置调整路径即可。
+
 ## 贡献指南
 
 欢迎提交 Issue 和 Pull Request！
