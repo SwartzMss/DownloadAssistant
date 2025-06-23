@@ -39,6 +39,18 @@ DownloadAssistant/
 └── LICENSE                        # 许可证文件
 ```
 
+## 构建方式
+
+确保安装了 Qt 工具链后，执行以下命令即可完成构建：
+
+```bash
+qmake
+make       # Windows 环境可使用 nmake
+```
+
+`qmake` 在生成 Makefile 时会自动调用 `uic`，从 `mainwindow.ui` 生成 `ui_mainwindow.h`，
+因此该文件无需加入版本控制。
+
 ## 文件结构
 
 ```
