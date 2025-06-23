@@ -1,8 +1,6 @@
 #include "mainwindow.h"
 
 #include <QApplication>
-#include <QLocale>
-#include <QTranslator>
 #include "logger.h"
 
 int main(int argc, char *argv[])
@@ -12,15 +10,6 @@ int main(int argc, char *argv[])
     // 初始化日志系统
     Logger::instance()->info("应用程序启动");
     
-    QTranslator translator;
-    const QStringList uiLanguages = QLocale::system().uiLanguages();
-    for (const QString &locale : uiLanguages) {
-        const QString baseName = "DownloadAssistant_" + QLocale(locale).name();
-        if (translator.load(":/i18n/" + baseName)) {
-            QApplication::installTranslator(&translator);
-            break;
-        }
-    }
     
     // 设置应用程序信息
     QApplication::setApplicationName("DownloadAssistant");
