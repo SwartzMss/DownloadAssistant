@@ -21,6 +21,7 @@ SOURCES += \
     src/downloadmanager.cpp \
     src/downloadtask.cpp \
     src/smbdownloader.cpp \
+    src/httpdownloader.cpp \
     src/smbworker.cpp \
     src/logger.cpp
 
@@ -29,6 +30,7 @@ HEADERS += \
     src/downloadmanager.h \
     src/downloadtask.h \
     src/smbdownloader.h \
+    src/httpdownloader.h \
     src/smbworker.h \
     src/logger.h
 

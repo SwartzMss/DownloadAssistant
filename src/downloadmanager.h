@@ -7,6 +7,7 @@
 #include <QSettings>
 #include "downloadtask.h"
 #include "smbdownloader.h"
+#include "httpdownloader.h"
 
 class DownloadManager : public QObject
 {
@@ -73,10 +74,12 @@ private slots:
     void onDownloadCancelled(DownloadTask *task);
     void onDownloadCompleted(DownloadTask *task);
     void onDownloadFailed(DownloadTask *task, const QString &error);
+    void onDownloadProgress(DownloadTask *task, qint64 bytesReceived, qint64 bytesTotal);
 
 private:
     QMap<QString, DownloadTask*> m_tasks;
     SmbDownloader *m_smbDownloader;
+    HttpDownloader *m_httpDownloader;
     QSettings *m_settings;
     
     QString m_defaultSavePath;
