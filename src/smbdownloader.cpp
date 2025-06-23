@@ -1,26 +1,20 @@
 #include "smbdownloader.h"
 #include "downloadtask.h"
-#include <QNetworkRequest>
-#include <QNetworkReply>
+#include "smbworker.h"
 #include <QFileInfo>
 #include <QDir>
 #include <QStandardPaths>
 #include <QMessageBox>
 #include <QApplication>
 #include <QDebug>
-#include <QFile>
 #include <QThread>
 #include <QTimer>
 #include "logger.h"
 
 SmbDownloader::SmbDownloader(QObject *parent)
     : QObject(parent)
-    , m_networkManager(new QNetworkAccessManager(this))
 {
     LOG_INFO("SmbDownloader 初始化");
-    
-    connect(m_networkManager, &QNetworkAccessManager::finished,
-            this, &SmbDownloader::onDownloadFinished);
 }
 
 SmbDownloader::~SmbDownloader()
@@ -28,12 +22,10 @@ SmbDownloader::~SmbDownloader()
     LOG_INFO("SmbDownloader 析构");
     // 清理所有活动下载
     for (auto info : m_activeDownloads.values()) {
-        if (info->reply) {
-            info->reply->abort();
-        }
-        if (info->file) {
-            info->file->close();
-            delete info->file;
+        if (info->worker) {
+            info->worker->requestCancel();
+            info->worker->wait();
+            delete info->worker;
         }
         if (info->speedTimer) {
             info->speedTimer->stop();
@@ -62,75 +54,34 @@ bool SmbDownloader::startDownload(DownloadTask *task)
     // 创建下载信息
     DownloadInfo *info = new DownloadInfo;
     info->task = task;
-    info->reply = nullptr;
-    info->file = nullptr;
+    info->worker = new SmbWorker(task, this);
     info->speedTimer = nullptr;
-    info->lastBytesReceived = 0;
-    info->lastSpeedUpdate = 0;
-    info->supportsResume = false;
-    info->downloadedBytes = 0;
+    info->lastBytesReceived = task->downloadedSize();
+    info->lastSpeedUpdate = QDateTime::currentMSecsSinceEpoch();
     info->totalBytes = 0;
-    info->startTime = QDateTime::currentDateTime();
-    
-    // 准备文件路径
-    QString filePath = task->savePath();
-    if (!filePath.endsWith('/') && !filePath.endsWith('\\')) {
-        filePath += '/';
-    }
-    
-    // 从 URL 中提取文件名
+
+    // 检查文件是否存在以确定断点续传
     QUrl url(task->url());
+    QString filePath = task->savePath();
+    if (!filePath.endsWith('/') && !filePath.endsWith('\\'))
+        filePath += '/';
     QString fileName = url.fileName();
-    if (fileName.isEmpty()) {
+    if (fileName.isEmpty())
         fileName = "downloaded_file";
-    }
     filePath += fileName;
-    
-    LOG_INFO(QString("文件保存路径: %1").arg(filePath));
-    
-    // 创建目录
+
     QFileInfo fileInfo(filePath);
-    QDir().mkpath(fileInfo.absolutePath());
-    
-    // 检查文件是否已存在，支持断点续传
     if (fileInfo.exists()) {
-        info->supportsResume = true;
         task->setSupportsResume(true);
-        task->setDownloadedSize(fileInfo.size());
-        info->downloadedBytes = fileInfo.size();
     }
-
-    // 创建网络请求
-    QNetworkRequest request(url);
-    request.setRawHeader("User-Agent", "DownloadAssistant/1.0");
-    
-    // 设置断点续传头
-    if (info->supportsResume && info->downloadedBytes > 0) {
-        LOG_INFO(QString("检测到断点续传 - 已下载: %1 字节").arg(info->downloadedBytes));
-        request.setRawHeader("Range", QString("bytes=%1-").arg(info->downloadedBytes).toUtf8());
-    }
-
-    // 发送请求
-    info->reply = m_networkManager->get(request);
     
     // 连接信号
-    connect(info->reply, &QNetworkReply::downloadProgress,
+    connect(info->worker, &SmbWorker::progress,
             this, &SmbDownloader::onDownloadProgress);
-    connect(info->reply, &QNetworkReply::errorOccurred,
-            this, &SmbDownloader::onNetworkError);
-    connect(info->reply, &QNetworkReply::sslErrors,
-            this, &SmbDownloader::onSslErrors);
-
-    // 创建文件
-    info->file = new QFile(filePath);
-    if (!info->file->open(QIODevice::WriteOnly | QIODevice::Append)) {
-        LOG_ERROR(QString("无法打开文件: %1").arg(filePath));
-        task->setStatus(DownloadTask::Failed);
-        task->setErrorMessage(tr("无法创建文件"));
-        emit downloadFailed(task, tr("无法创建文件：%1").arg(info->file->errorString()));
-        cleanupDownload(task);
-        return false;
-    }
+    connect(info->worker, &SmbWorker::finished,
+            this, [this, task](bool success, const QString &err) {
+                onDownloadFinished(task, success, err);
+            });
 
     // 创建速度计时器
     info->speedTimer = new QTimer(this);
@@ -140,10 +91,11 @@ bool SmbDownloader::startDownload(DownloadTask *task)
 
     // 添加到活动下载列表
     m_activeDownloads[task] = info;
-    
-    // 更新任务状态
+
+    // 更新任务状态并启动线程
     task->setStatus(DownloadTask::Downloading);
-    
+    info->worker->start();
+
     emit downloadStarted(task);
     return true;
 }
@@ -153,13 +105,13 @@ void SmbDownloader::pauseDownload(DownloadTask *task)
     LOG_INFO(QString("暂停 SMB 下载 - 任务ID: %1").arg(task->id()));
     
     DownloadInfo *info = findDownloadInfo(task);
-    if (!info || !info->reply) {
+    if (!info || !info->worker) {
         LOG_WARNING(QString("找不到下载信息 - 任务ID: %1").arg(task->id()));
         return;
     }
 
     // 暂停下载
-    info->reply->abort();
+    info->worker->requestPause();
     task->setStatus(DownloadTask::Paused);
     
     LOG_INFO(QString("SMB 下载已暂停 - 任务ID: %1").arg(task->id()));
@@ -175,8 +127,12 @@ void SmbDownloader::resumeDownload(DownloadTask *task)
         return;
     }
 
-    // 重新开始下载
-    startDownload(task);
+    DownloadInfo *info = findDownloadInfo(task);
+    if (info && info->worker) {
+        info->worker->resumeWork();
+    } else {
+        startDownload(task);
+    }
     emit downloadResumed(task);
 }
 
@@ -191,8 +147,9 @@ void SmbDownloader::cancelDownload(DownloadTask *task)
     }
 
     // 取消下载
-    if (info->reply) {
-        info->reply->abort();
+    if (info->worker) {
+        info->worker->requestCancel();
+        info->worker->wait();
     }
     
     task->setStatus(DownloadTask::Cancelled);
@@ -206,128 +163,49 @@ void SmbDownloader::cancelDownload(DownloadTask *task)
 
 void SmbDownloader::onDownloadProgress(qint64 bytesReceived, qint64 bytesTotal)
 {
-    QNetworkReply *reply = qobject_cast<QNetworkReply*>(sender());
-    if (!reply) {
+    SmbWorker *worker = qobject_cast<SmbWorker*>(sender());
+    if (!worker)
         return;
-    }
 
-    // 查找对应的下载信息
     DownloadTask *task = nullptr;
     DownloadInfo *info = nullptr;
-    
+
     for (auto it = m_activeDownloads.begin(); it != m_activeDownloads.end(); ++it) {
-        if (it.value()->reply == reply) {
+        if (it.value()->worker == worker) {
             task = it.key();
             info = it.value();
             break;
         }
     }
 
-    if (!task || !info) {
+    if (!task || !info)
         return;
-    }
 
-    // 更新进度
-    qint64 totalReceived = info->supportsResume ? 
-                          task->downloadedSize() + bytesReceived : bytesReceived;
-    
     if (bytesTotal > 0) {
         task->setTotalSize(bytesTotal);
-    }
-    
-    task->setDownloadedSize(totalReceived);
-    
-    // 写入文件
-    if (info->file && info->file->isOpen()) {
-        QByteArray data = reply->readAll();
-        if (!data.isEmpty()) {
-            info->file->write(data);
-            info->file->flush();
-        }
+        info->totalBytes = bytesTotal;
     }
 
-    // 下载进度已经在任务对象中更新，此处不修改 lastBytesReceived，
-    // 由定时器在 updateSpeed() 中处理速度计算
-    
-    emit downloadProgress(task, totalReceived, bytesTotal);
+    task->setDownloadedSize(bytesReceived);
+    emit downloadProgress(task, bytesReceived, bytesTotal);
 }
 
-void SmbDownloader::onDownloadFinished()
+void SmbDownloader::onDownloadFinished(DownloadTask *task, bool success, const QString &error)
 {
-    QNetworkReply *reply = qobject_cast<QNetworkReply*>(sender());
-    if (!reply) {
-        return;
-    }
+    DownloadInfo *info = findDownloadInfo(task);
+    Q_UNUSED(info);
 
-    // 查找对应的下载信息
-    DownloadTask *task = nullptr;
-    DownloadInfo *info = nullptr;
-    
-    for (auto it = m_activeDownloads.begin(); it != m_activeDownloads.end(); ++it) {
-        if (it.value()->reply == reply) {
-            task = it.key();
-            info = it.value();
-            break;
-        }
-    }
-
-    if (!task || !info) {
-        return;
-    }
-
-    // 检查下载是否成功
-    if (reply->error() == QNetworkReply::NoError) {
-        // 写入剩余数据
-        if (info->file && info->file->isOpen()) {
-            QByteArray data = reply->readAll();
-            if (!data.isEmpty()) {
-                info->file->write(data);
-            }
-            info->file->close();
-        }
-
+    if (success) {
         task->setStatus(DownloadTask::Completed);
         emit downloadCompleted(task);
     } else {
         task->setStatus(DownloadTask::Failed);
-        emit downloadFailed(task, reply->errorString());
+        emit downloadFailed(task, error);
     }
 
     cleanupDownload(task);
 }
 
-void SmbDownloader::onNetworkError(QNetworkReply::NetworkError error)
-{
-    QNetworkReply *reply = qobject_cast<QNetworkReply*>(sender());
-    if (!reply) {
-        return;
-    }
-
-    // 查找对应的任务
-    DownloadTask *task = nullptr;
-    for (auto it = m_activeDownloads.begin(); it != m_activeDownloads.end(); ++it) {
-        if (it.value()->reply == reply) {
-            task = it.key();
-            break;
-        }
-    }
-
-    if (task) {
-        task->setStatus(DownloadTask::Failed);
-        emit downloadFailed(task, reply->errorString());
-    }
-}
-
-void SmbDownloader::onSslErrors(const QList<QSslError> &errors)
-{
-    QNetworkReply *reply = qobject_cast<QNetworkReply*>(sender());
-    if (!reply) {
-        return;
-    }
-
-    // 对于开发阶段，忽略 SSL 错误
-    reply->ignoreSslErrors();
-}
 
 void SmbDownloader::updateSpeed()
 {
@@ -365,13 +243,9 @@ void SmbDownloader::cleanupDownload(DownloadTask *task)
         return;
     }
 
-    if (info->reply) {
-        info->reply->deleteLater();
-    }
-    
-    if (info->file) {
-        info->file->close();
-        delete info->file;
+    if (info->worker) {
+        info->worker->wait();
+        delete info->worker;
     }
     
     if (info->speedTimer) {
