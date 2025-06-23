@@ -26,15 +26,6 @@ jobs:
     - name: Setup MSVC
       uses: ilammy/msvc-dev-cmd@v1
 
-    - name: Install libsmbclient
-      shell: powershell
-      run: |
-        git clone https://github.com/microsoft/vcpkg.git $env:VCPKG_ROOT
-        & "$env:VCPKG_ROOT\bootstrap-vcpkg.bat"
-        & "$env:VCPKG_ROOT\vcpkg" install libsmbclient:x64-windows
-        echo "INCLUDE=$env:VCPKG_ROOT\installed\x64-windows\include;$env:INCLUDE" >> $env:GITHUB_ENV
-        echo "LIB=$env:VCPKG_ROOT\installed\x64-windows\lib;$env:LIB" >> $env:GITHUB_ENV
-    
     - name: Configure
       shell: cmd
       run: |
