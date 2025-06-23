@@ -4,6 +4,8 @@
 #include <QMainWindow>
 #include <QStandardItemModel>
 #include <QTimer>
+#include <QSystemTrayIcon>
+#include <QMenu>
 #include "downloadmanager.h"
 
 QT_BEGIN_NAMESPACE
@@ -41,6 +43,7 @@ private slots:
     
     // 定时器事件
     void onUpdateTimer();
+    void onTrayIconActivated(QSystemTrayIcon::ActivationReason reason);
 
 private:
     // UI 组件
@@ -50,6 +53,8 @@ private:
     DownloadManager *m_downloadManager;
     QStandardItemModel *m_taskModel;
     QTimer *m_updateTimer;
+    QSystemTrayIcon *m_trayIcon;
+    QMenu *m_trayMenu;
     
     // 辅助方法
     void setupUI();
@@ -71,6 +76,12 @@ private:
     void showInfo(const QString &message);
     void showError(const QString &message);
     QString formatBytes(qint64 bytes) const;
+
+    void createTrayIcon();
+    void createTrayMenu();
+
+protected:
+    void closeEvent(QCloseEvent *event) override;
 };
 
 #endif // MAINWINDOW_H 
