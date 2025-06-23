@@ -9,9 +9,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <sys/stat.h>
-
-static thread_local QString t_username;
-static thread_local QString t_password;
+#include <smb2/libsmb2.h>
 
 SmbWorker::SmbWorker(DownloadTask *task, QObject *parent)
     : QThread(parent), m_task(task), m_pauseRequested(false),
@@ -32,28 +30,6 @@ void SmbWorker::requestCancel()
 void SmbWorker::resumeWork()
 {
     m_pauseRequested = false;
-}
-
-void SmbWorker::authCallback(SMBCCTX *ctx, const char *srv, const char *shr,
-                             char *wg, int wglen,
-                             char *un, int unlen,
-                             char *pw, int pwlen)
-{
-    Q_UNUSED(ctx);
-    Q_UNUSED(srv);
-    Q_UNUSED(shr);
-    if (wg && wglen > 0)
-        wg[0] = '\0';
-    if (un && unlen > 0) {
-        QByteArray u = t_username.toUtf8();
-        strncpy(un, u.constData(), unlen - 1);
-        un[unlen - 1] = '\0';
-    }
-    if (pw && pwlen > 0) {
-        QByteArray p = t_password.toUtf8();
-        strncpy(pw, p.constData(), pwlen - 1);
-        pw[pwlen - 1] = '\0';
-    }
 }
 
 void SmbWorker::run()
@@ -81,42 +57,68 @@ void SmbWorker::run()
 
     m_offset = file.size();
 
-    t_username = m_task->username();
-    t_password = m_task->password();
-
-    if (smbc_init(authCallback, 0) < 0) {
-        emit finished(false, QString::fromLocal8Bit(strerror(errno)));
-        return;
-    }
-
-    SMBCCTX *ctx = smbc_get_context();
+    struct smb2_context *ctx = smb2_init_context();
     if (!ctx) {
-        emit finished(false, QObject::tr("SMB 上下文创建失败"));
+        emit finished(false, QObject::tr("SMB2 上下文创建失败"));
         return;
     }
 
-    smbc_setOptionUserData(ctx, this);
+    QByteArray user = m_task->username().toUtf8();
+    QByteArray pass = m_task->password().toUtf8();
+    if (!user.isEmpty())
+        smb2_set_user(ctx, user.constData());
+    if (!pass.isEmpty())
+        smb2_set_password(ctx, pass.constData());
 
-    QByteArray urlData = url.toString().toUtf8();
-    SMBCFILE *remote = smbc_open(urlData.constData(), O_RDONLY, 0);
+    QStringList segments = url.path().split('/', Qt::SkipEmptyParts);
+    if (segments.isEmpty()) {
+        smb2_destroy_context(ctx);
+        emit finished(false, QObject::tr("无效的 SMB 路径"));
+        return;
+    }
+    QString share = segments.takeFirst();
+    QString remotePath = "/" + segments.join('/');
+
+    if (smb2_connect_share(ctx, url.host().toUtf8().constData(),
+                           share.toUtf8().constData(), user.isEmpty() ? NULL : user.constData()) < 0) {
+        QString err = QString::fromLocal8Bit(smb2_get_error(ctx));
+        smb2_destroy_context(ctx);
+        emit finished(false, err);
+        return;
+    }
+
+    struct smb2_stat_64 st;
+    if (smb2_stat(ctx, remotePath.toUtf8().constData(), &st) == 0) {
+        emit progress(m_offset, st.smb2_size);
+    } else {
+        st.smb2_size = 0;
+    }
+
+    struct smb2fh *remote = smb2_open(ctx, remotePath.toUtf8().constData(), O_RDONLY);
     if (!remote) {
-        emit finished(false, QString::fromLocal8Bit(strerror(errno)));
+        QString err = QString::fromLocal8Bit(smb2_get_error(ctx));
+        smb2_disconnect_share(ctx);
+        smb2_destroy_context(ctx);
+        emit finished(false, err);
         return;
-    }
-
-    struct stat st;
-    if (smbc_stat(urlData.constData(), &st) == 0) {
-        emit progress(m_offset, st.st_size);
     }
 
     if (m_offset > 0) {
-        smbc_lseek(remote, m_offset, SEEK_SET);
+        uint64_t current = 0;
+        if (smb2_lseek(ctx, remote, m_offset, SEEK_SET, &current) < 0) {
+            QString err = QString::fromLocal8Bit(smb2_get_error(ctx));
+            smb2_close(ctx, remote);
+            smb2_disconnect_share(ctx);
+            smb2_destroy_context(ctx);
+            emit finished(false, err);
+            return;
+        }
     }
 
     const int bufSize = 4096;
-    char buf[bufSize];
+    uint8_t buf[bufSize];
     qint64 received = m_offset;
-    qint64 total = st.st_size;
+    qint64 total = st.smb2_size;
 
     while (!m_cancelRequested) {
         if (m_pauseRequested) {
@@ -124,24 +126,31 @@ void SmbWorker::run()
             continue;
         }
 
-        int n = smbc_read(remote, buf, bufSize);
+        int n = smb2_read(ctx, remote, buf, bufSize);
         if (n < 0) {
-            emit finished(false, QString::fromLocal8Bit(strerror(errno)));
-            smbc_close(remote);
+            QString err = QString::fromLocal8Bit(smb2_get_error(ctx));
+            smb2_close(ctx, remote);
+            smb2_disconnect_share(ctx);
+            smb2_destroy_context(ctx);
+            emit finished(false, err);
             return;
         }
         if (n == 0)
             break;
-        if (file.write(buf, n) != n) {
+        if (file.write(reinterpret_cast<char*>(buf), n) != n) {
+            smb2_close(ctx, remote);
+            smb2_disconnect_share(ctx);
+            smb2_destroy_context(ctx);
             emit finished(false, QObject::tr("写入文件失败"));
-            smbc_close(remote);
             return;
         }
         received += n;
         emit progress(received, total);
     }
 
-    smbc_close(remote);
+    smb2_close(ctx, remote);
+    smb2_disconnect_share(ctx);
+    smb2_destroy_context(ctx);
     file.close();
 
     if (m_cancelRequested) {

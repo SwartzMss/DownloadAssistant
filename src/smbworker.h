@@ -3,7 +3,7 @@
 
 #include <QThread>
 #include <QString>
-#include <libsmbclient.h>
+#include <smb2/libsmb2.h>
 
 class DownloadTask;
 
@@ -25,11 +25,6 @@ protected:
     void run() override;
 
 private:
-    static void authCallback(SMBCCTX *ctx, const char *srv, const char *shr,
-                             char *wg, int wglen,
-                             char *un, int unlen,
-                             char *pw, int pwlen);
-
     DownloadTask *m_task;
     bool m_pauseRequested;
     bool m_cancelRequested;
