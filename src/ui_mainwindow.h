@@ -18,6 +18,7 @@
 #include <QtWidgets/QHeaderView>
 #include <QtWidgets/QLabel>
 #include <QtWidgets/QLineEdit>
+#include <QtWidgets/QCheckBox>
 #include <QtWidgets/QMainWindow>
 #include <QtWidgets/QPushButton>
 #include <QtWidgets/QSpacerItem>
@@ -40,6 +41,11 @@ public:
     QLabel *label_3;
     QLineEdit *urlEdit;
     QLabel *label_2;
+    QCheckBox *authCheckBox;
+    QLabel *label_username;
+    QLineEdit *usernameEdit;
+    QLabel *label_password;
+    QLineEdit *passwordEdit;
     QHBoxLayout *horizontalLayout;
     QLineEdit *savePathEdit;
     QPushButton *browseButton;
@@ -113,6 +119,32 @@ public:
 
         gridLayout->addLayout(horizontalLayout, 2, 1, 1, 1);
 
+        authCheckBox = new QCheckBox(groupBox);
+        authCheckBox->setObjectName("authCheckBox");
+
+        gridLayout->addWidget(authCheckBox, 3, 0, 1, 2);
+
+        label_username = new QLabel(groupBox);
+        label_username->setObjectName("label_username");
+
+        gridLayout->addWidget(label_username, 4, 0, 1, 1);
+
+        usernameEdit = new QLineEdit(groupBox);
+        usernameEdit->setObjectName("usernameEdit");
+
+        gridLayout->addWidget(usernameEdit, 4, 1, 1, 1);
+
+        label_password = new QLabel(groupBox);
+        label_password->setObjectName("label_password");
+
+        gridLayout->addWidget(label_password, 5, 0, 1, 1);
+
+        passwordEdit = new QLineEdit(groupBox);
+        passwordEdit->setObjectName("passwordEdit");
+        passwordEdit->setEchoMode(QLineEdit::Password);
+
+        gridLayout->addWidget(passwordEdit, 5, 1, 1, 1);
+
         horizontalLayout_2 = new QHBoxLayout();
         horizontalLayout_2->setObjectName("horizontalLayout_2");
         addTaskButton = new QPushButton(groupBox);
@@ -130,7 +162,7 @@ public:
         horizontalLayout_2->addItem(horizontalSpacer);
 
 
-        gridLayout->addLayout(horizontalLayout_2, 3, 0, 1, 2);
+        gridLayout->addLayout(horizontalLayout_2, 6, 0, 1, 2);
 
 
         verticalLayout->addWidget(groupBox);
@@ -219,6 +251,9 @@ public:
         label_2->setText(QCoreApplication::translate("MainWindow", "\344\277\235\345\255\230\344\275\215\347\275\256\357\274\232", nullptr));
         savePathEdit->setPlaceholderText(QCoreApplication::translate("MainWindow", "\351\200\211\346\213\251\346\226\207\344\273\266\344\277\235\345\255\230\344\275\215\347\275\256", nullptr));
         browseButton->setText(QCoreApplication::translate("MainWindow", "\346\265\217\350\247\210...", nullptr));
+        authCheckBox->setText(QCoreApplication::translate("MainWindow", "\345\257\206\347\251\272\346\200\247\345\212\241", nullptr));
+        label_username->setText(QCoreApplication::translate("MainWindow", "\347\224\250\345\220\206\357\274\232", nullptr));
+        label_password->setText(QCoreApplication::translate("MainWindow", "\345\257\274\347\240\201\357\274\232", nullptr));
         addTaskButton->setText(QCoreApplication::translate("MainWindow", "\346\267\273\345\212\240\344\270\213\350\275\275\344\273\273\345\212\241", nullptr));
         clearButton->setText(QCoreApplication::translate("MainWindow", "\346\270\205\347\251\272", nullptr));
         groupBox_2->setTitle(QCoreApplication::translate("MainWindow", "\344\270\213\350\275\275\344\273\273\345\212\241\345\210\227\350\241\250", nullptr));
