@@ -600,7 +600,15 @@ QString MainWindow::formatBytes(qint64 bytes) const
 
 void MainWindow::loadTasks()
 {
-    // 实现加载任务的逻辑
+    // 从下载管理器获取所有已加载的任务并插入到表格中
+    QList<DownloadTask*> tasks = m_downloadManager->getAllTasks();
+
+    ui->taskTable->setRowCount(0);
+    for (DownloadTask *task : tasks) {
+        addTableRow(task);
+    }
+
+    updateStatusBar();
 }
 
 void MainWindow::onTaskProgress(const QString &taskId, qint64 bytesReceived, qint64 bytesTotal)
