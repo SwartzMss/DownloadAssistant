@@ -9,6 +9,8 @@
 #include <QApplication>
 #include <QCheckBox>
 #include <QProgressBar>
+#include <algorithm>
+#include <QSet>
 #include "logger.h"
 
 MainWindow::MainWindow(QWidget *parent)
