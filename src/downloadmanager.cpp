@@ -1,6 +1,7 @@
 #include "downloadmanager.h"
 #include "downloadtask.h"
 #include "smbdownloader.h"
+#include "httpdownloader.h"
 #include <QStandardPaths>
 #include <QDir>
 #include <QDebug>
@@ -11,6 +12,7 @@
 DownloadManager::DownloadManager(QObject *parent)
     : QObject(parent)
     , m_smbDownloader(new SmbDownloader(this))
+    , m_httpDownloader(new HttpDownloader(this))
     , m_settings(new QSettings(QCoreApplication::applicationDirPath() + "/config.ini", QSettings::IniFormat, this))
     , m_maxConcurrentDownloads(3)
     , m_activeDownloadCount(0)
@@ -43,6 +45,23 @@ DownloadManager::DownloadManager(QObject *parent)
             this, &DownloadManager::onDownloadCompleted);
     connect(m_smbDownloader, &SmbDownloader::downloadFailed,
             this, &DownloadManager::onDownloadFailed);
+    connect(m_smbDownloader, &SmbDownloader::downloadProgress,
+            this, &DownloadManager::onDownloadProgress);
+
+    connect(m_httpDownloader, &HttpDownloader::downloadStarted,
+            this, &DownloadManager::onDownloadStarted);
+    connect(m_httpDownloader, &HttpDownloader::downloadPaused,
+            this, &DownloadManager::onDownloadPaused);
+    connect(m_httpDownloader, &HttpDownloader::downloadResumed,
+            this, &DownloadManager::onDownloadResumed);
+    connect(m_httpDownloader, &HttpDownloader::downloadCancelled,
+            this, &DownloadManager::onDownloadCancelled);
+    connect(m_httpDownloader, &HttpDownloader::downloadCompleted,
+            this, &DownloadManager::onDownloadCompleted);
+    connect(m_httpDownloader, &HttpDownloader::downloadFailed,
+            this, &DownloadManager::onDownloadFailed);
+    connect(m_httpDownloader, &HttpDownloader::downloadProgress,
+            this, &DownloadManager::onDownloadProgress);
     
     // 加载保存的任务
     loadTasks();
@@ -170,6 +189,8 @@ void DownloadManager::startTask(const QString &taskId)
     // 根据协议类型选择下载器
     if (task->protocol() == DownloadTask::SMB) {
         m_smbDownloader->startDownload(task);
+    } else if (task->protocol() == DownloadTask::HTTP_HTTPS) {
+        m_httpDownloader->startDownload(task);
     } else {
         LOG_WARNING(QString("不支持的协议类型 - ID: %1, 协议: %2").arg(taskId).arg(static_cast<int>(task->protocol())));
     }
@@ -197,6 +218,8 @@ void DownloadManager::pauseTask(const QString &taskId)
     
     if (task->protocol() == DownloadTask::SMB) {
         m_smbDownloader->pauseDownload(task);
+    } else if (task->protocol() == DownloadTask::HTTP_HTTPS) {
+        m_httpDownloader->pauseDownload(task);
     }
     
     processNextTask();
@@ -230,6 +253,8 @@ void DownloadManager::resumeTask(const QString &taskId)
     
     if (task->protocol() == DownloadTask::SMB) {
         m_smbDownloader->resumeDownload(task);
+    } else if (task->protocol() == DownloadTask::HTTP_HTTPS) {
+        m_httpDownloader->resumeDownload(task);
     }
 }
 
@@ -253,6 +278,8 @@ void DownloadManager::cancelTask(const QString &taskId)
     
     if (task->protocol() == DownloadTask::SMB) {
         m_smbDownloader->cancelDownload(task);
+    } else if (task->protocol() == DownloadTask::HTTP_HTTPS) {
+        m_httpDownloader->cancelDownload(task);
     }
     
     processNextTask();
@@ -485,6 +512,13 @@ void DownloadManager::onDownloadFailed(DownloadTask *task, const QString &error)
     task->setErrorMessage(error);
     emit taskFailed(task->id(), error);
     processNextTask();
+}
+
+void DownloadManager::onDownloadProgress(DownloadTask *task, qint64 bytesReceived, qint64 bytesTotal)
+{
+    Q_UNUSED(bytesReceived);
+    Q_UNUSED(bytesTotal);
+    emit taskProgress(task->id(), task->downloadedSize(), task->totalSize());
 }
 
 void DownloadManager::processNextTask()
