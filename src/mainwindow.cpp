@@ -8,6 +8,8 @@
 #include <QHeaderView>
 #include <QApplication>
 #include <QProgressBar>
+#include <algorithm>
+#include <QSet>
 #include "logger.h"
 
 MainWindow::MainWindow(QWidget *parent)
