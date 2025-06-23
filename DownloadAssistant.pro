@@ -23,7 +23,8 @@ SOURCES += \
     src/smbdownloader.cpp \
     src/httpdownloader.cpp \
     src/smbworker.cpp \
-    src/logger.cpp
+    src/logger.cpp \
+    src/remote_smbfile_dialog.cpp
 
 HEADERS += \
     src/mainwindow.h \
@@ -32,7 +33,8 @@ HEADERS += \
     src/smbdownloader.h \
     src/httpdownloader.h \
     src/smbworker.h \
-    src/logger.h
+    src/logger.h \
+    src/remote_smbfile_dialog.h
 
 FORMS += \
     src/mainwindow.ui

@@ -15,6 +15,7 @@
 #include <algorithm>
 #include <QSet>
 #include "logger.h"
+#include "remote_smbfile_dialog.h"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -101,6 +102,20 @@ void MainWindow::setupConnections()
     connect(ui->pauseAllButton, &QPushButton::clicked, this, &MainWindow::onPauseAllClicked);
     connect(ui->removeButton, &QPushButton::clicked, this, &MainWindow::onRemoveClicked);
     connect(ui->clearCompletedButton, &QPushButton::clicked, this, &MainWindow::onClearCompletedClicked);
+    connect(ui->browseSmbButton, &QPushButton::clicked, this, [this]() {
+        QString currentUrl = ui->urlEdit->text();
+        RemoteSmbFileDialog dlg(this);
+        dlg.setSmbUrl(currentUrl);
+        if (dlg.exec() == QDialog::Accepted) {
+            QStringList files = dlg.selectedFiles();
+            if (!files.isEmpty()) {
+                // 只取第一个文件填入下载地址（如需批量可扩展）
+                QString baseUrl = currentUrl;
+                if (!baseUrl.endsWith('/')) baseUrl += '/';
+                ui->urlEdit->setText(baseUrl + files.first());
+            }
+        }
+    });
     
     // 连接下载管理器信号
     connect(m_downloadManager, &DownloadManager::taskAdded, this, &MainWindow::onTaskAdded);
