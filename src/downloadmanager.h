@@ -17,7 +17,11 @@ public:
     ~DownloadManager();
 
     // 任务管理
-    QString addTask(const QString &url, const QString &savePath = "", DownloadTask::ProtocolType protocol = DownloadTask::SMB);
+    QString addTask(const QString &url,
+                    const QString &savePath = "",
+                    DownloadTask::ProtocolType protocol = DownloadTask::SMB,
+                    const QString &username = QString(),
+                    const QString &password = QString());
     void removeTask(const QString &taskId);
     void removeCompletedTasks();
     
