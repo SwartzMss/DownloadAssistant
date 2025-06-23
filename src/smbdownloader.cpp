@@ -246,8 +246,8 @@ void SmbDownloader::onDownloadProgress(qint64 bytesReceived, qint64 bytesTotal)
         }
     }
 
-    // 更新速度计算
-    info->lastBytesReceived = totalReceived;
+    // 下载进度已经在任务对象中更新，此处不修改 lastBytesReceived，
+    // 由定时器在 updateSpeed() 中处理速度计算
     
     emit downloadProgress(task, totalReceived, bytesTotal);
 }
@@ -338,11 +338,16 @@ void SmbDownloader::updateSpeed()
         if (info->speedTimer && info->speedTimer->isActive()) {
             qint64 currentTime = QDateTime::currentMSecsSinceEpoch();
             qint64 timeDiff = currentTime - info->lastSpeedUpdate;
-            
+
             if (timeDiff > 0) {
-                qint64 bytesDiff = info->lastBytesReceived - task->downloadedSize();
+                // 计算自上次更新时间以来接收的字节数
+                qint64 bytesDiff = task->downloadedSize() - info->lastBytesReceived;
                 qint64 speed = (bytesDiff * 1000) / timeDiff; // 字节/秒
+
+                // 记录此次计算的基准点并更新任务的速度
                 info->lastSpeedUpdate = currentTime;
+                info->lastBytesReceived = task->downloadedSize();
+                task->setSpeed(speed);
             }
         }
     }
