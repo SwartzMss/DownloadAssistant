@@ -94,20 +94,16 @@ DownloadAssistant/
 
 ## 构建指南 / Build Instructions
 
-本项目依赖 [libsmbclient](https://www.samba.org/samba/docs/current/man-html/libsmbclient.7.html) 实现 SMB 功能。在 Windows 平台上可通过 [vcpkg](https://github.com/microsoft/vcpkg) 或使用预编译二进制包安装。
+本项目依赖 [libsmb2](https://github.com/sahlberg/libsmb2) 实现 SMB 功能，仓库已在 `depend/libsmb2` 目录中提供预编译的库和头文件，可直接用于构建。
 
-**Windows 示例步骤：**
+在 `DownloadAssistant.pro` 中已经预设以下路径：
 
-1. 安装并初始化 `vcpkg`
-2. 运行 `vcpkg install libsmbclient:x64-windows`
-3. 在 `DownloadAssistant.pro` 中加入 libsmbclient 的 `INCLUDEPATH` 和 `LIBS` 路径，例如：
+```pro
+INCLUDEPATH += $$PWD/depend/libsmb2/include
+LIBS += -L$$PWD/depend/libsmb2/lib -lsmb2
+```
 
-   ```pro
-   INCLUDEPATH += C:/vcpkg/installed/x64-windows/include
-   LIBS += -LC:/vcpkg/installed/x64-windows/lib -lsmbclient
-   ```
-
-根据实际安装位置调整路径即可。
+如需使用其他版本的 libsmb2，也可通过 [vcpkg](https://github.com/microsoft/vcpkg) 安装并修改上述路径。
 
 ## 贡献指南
 
