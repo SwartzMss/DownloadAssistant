@@ -6,6 +6,7 @@
 #include <QNetworkReply>
 #include <QTimer>
 #include <QMap>
+#include <QFile>
 #include "downloadtask.h"
 
 class HttpDownloader : public QObject

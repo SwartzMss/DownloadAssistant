@@ -58,6 +58,14 @@ MainWindow::MainWindow(QWidget *parent)
     // 加载任务
     loadTasks();
 
+    // 设置应用程序和窗口图标
+    setWindowIcon(QIcon(":/images/icon.png"));
+    
+    // 托盘可用性判断
+    if (!QSystemTrayIcon::isSystemTrayAvailable()) {
+        QMessageBox::critical(this, tr("错误"), tr("系统托盘不可用！"));
+        return;
+    }
     createTrayMenu();
     createTrayIcon();
     

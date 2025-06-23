@@ -2,10 +2,18 @@
 
 #include <QApplication>
 #include "logger.h"
+#include <QSharedMemory>
+#include <QMessageBox>
 
 int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
+    
+    QSharedMemory sharedMemory("DownloadAssistantSingleInstanceKey");
+    if (!sharedMemory.create(1)) {
+        QMessageBox::warning(nullptr, "提示", "程序已在运行，不允许多开！");
+        return 0;
+    }
     
     // 初始化日志系统
     Logger::instance()->info("应用程序启动");
