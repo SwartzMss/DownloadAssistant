@@ -44,6 +44,7 @@ else: unix:!android: target.path = /opt/$${TARGET}/bin
 win32 {
     LIBS += -lws2_32 -liphlpapi
     DEFINES += WIN32_LEAN_AND_MEAN
+    # libsmbclient is required for SMB support; adjust include/lib paths if installed manually
     LIBS += -lsmbclient
 }
 
