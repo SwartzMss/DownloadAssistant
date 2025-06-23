@@ -2,11 +2,10 @@
 #define SMBDOWNLOADER_H
 
 #include <QObject>
-#include <QNetworkAccessManager>
-#include <QNetworkReply>
-#include <QFile>
 #include <QTimer>
 #include <QDateTime>
+#include <QMap>
+#include "smbworker.h"
 #include "downloadtask.h"
 
 class SmbDownloader : public QObject
@@ -35,26 +34,19 @@ signals:
 
 private slots:
     void onDownloadProgress(qint64 bytesReceived, qint64 bytesTotal);
-    void onDownloadFinished();
-    void onNetworkError(QNetworkReply::NetworkError error);
-    void onSslErrors(const QList<QSslError> &errors);
+    void onDownloadFinished(DownloadTask *task, bool success, const QString &error);
     void updateSpeed();
 
 private:
     struct DownloadInfo {
         DownloadTask *task;
-        QNetworkReply *reply;
-        QFile *file;
+        SmbWorker *worker;
         QTimer *speedTimer;
         qint64 lastBytesReceived;
         qint64 lastSpeedUpdate;
-        bool supportsResume;
-        qint64 downloadedBytes;
         qint64 totalBytes;
-        QDateTime startTime;
     };
 
-    QNetworkAccessManager *m_networkManager;
     QMap<DownloadTask*, DownloadInfo*> m_activeDownloads;
     
     // 辅助方法

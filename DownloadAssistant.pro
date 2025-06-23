@@ -21,6 +21,7 @@ SOURCES += \
     src/downloadmanager.cpp \
     src/downloadtask.cpp \
     src/smbdownloader.cpp \
+    src/smbworker.cpp \
     src/logger.cpp
 
 HEADERS += \
@@ -28,6 +29,7 @@ HEADERS += \
     src/downloadmanager.h \
     src/downloadtask.h \
     src/smbdownloader.h \
+    src/smbworker.h \
     src/logger.h
 
 FORMS += \
@@ -42,6 +44,11 @@ else: unix:!android: target.path = /opt/$${TARGET}/bin
 win32 {
     LIBS += -lws2_32 -liphlpapi
     DEFINES += WIN32_LEAN_AND_MEAN
+    LIBS += -lsmbclient
+}
+
+unix {
+    LIBS += -lsmbclient
 }
 
 # Release configuration
