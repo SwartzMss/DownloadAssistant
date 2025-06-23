@@ -7,6 +7,7 @@
 #include <QStandardPaths>
 #include <QHeaderView>
 #include <QApplication>
+#include <QCheckBox>
 #include <QProgressBar>
 #include "logger.h"
 
@@ -20,6 +21,9 @@ MainWindow::MainWindow(QWidget *parent)
     LOG_INFO("MainWindow 初始化开始");
     
     ui->setupUi(this);
+
+    ui->usernameEdit->setEnabled(false);
+    ui->passwordEdit->setEnabled(false);
     
     setupUI();
     setupConnections();
@@ -71,6 +75,10 @@ void MainWindow::setupConnections()
     connect(ui->addTaskButton, &QPushButton::clicked, this, &MainWindow::onAddTaskClicked);
     connect(ui->browseButton, &QPushButton::clicked, this, &MainWindow::onBrowseClicked);
     connect(ui->clearButton, &QPushButton::clicked, this, &MainWindow::onClearClicked);
+    connect(ui->authCheckBox, &QCheckBox::toggled, this, [this](bool checked){
+        ui->usernameEdit->setEnabled(checked);
+        ui->passwordEdit->setEnabled(checked);
+    });
     connect(ui->startAllButton, &QPushButton::clicked, this, &MainWindow::onStartAllClicked);
     connect(ui->pauseAllButton, &QPushButton::clicked, this, &MainWindow::onPauseAllClicked);
     connect(ui->removeButton, &QPushButton::clicked, this, &MainWindow::onRemoveClicked);
@@ -136,7 +144,14 @@ void MainWindow::onAddTaskClicked()
     
     DownloadTask::ProtocolType protocol = static_cast<DownloadTask::ProtocolType>(ui->protocolComboBox->currentData().toInt());
     
-    QString taskId = m_downloadManager->addTask(url, savePath, protocol);
+    QString username;
+    QString password;
+    if (ui->authCheckBox->isChecked()) {
+        username = ui->usernameEdit->text();
+        password = ui->passwordEdit->text();
+    }
+
+    QString taskId = m_downloadManager->addTask(url, savePath, protocol, username, password);
     
     // 清空输入框
     ui->urlEdit->clear();

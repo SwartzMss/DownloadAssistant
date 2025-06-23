@@ -14,6 +14,8 @@ DownloadTask::DownloadTask(QObject *parent)
     , m_speed(0)
     , m_supportsResume(false)
     , m_protocol(SMB)
+    , m_username()
+    , m_password()
 {
     LOG_DEBUG("创建新的下载任务");
     generateId();
