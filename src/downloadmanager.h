@@ -82,9 +82,6 @@ private:
     // 辅助方法
     void processNextTask();
     void updateActiveDownloadCount();
-    QString generateTaskId() const;
-    void connectTaskSignals(DownloadTask *task);
-    void disconnectTaskSignals(DownloadTask *task);
 };
 
 #endif // DOWNLOADMANAGER_H 

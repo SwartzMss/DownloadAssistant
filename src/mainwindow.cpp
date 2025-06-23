@@ -199,11 +199,6 @@ void MainWindow::onRemoveClicked()
     }
 }
 
-void MainWindow::onRemoveTaskClicked()
-{
-    // 这个方法与 onRemoveClicked 功能相同，直接调用
-    onRemoveClicked();
-}
 
 void MainWindow::onClearCompletedClicked()
 {
@@ -585,65 +580,6 @@ QString MainWindow::formatBytes(qint64 bytes) const
     }
 }
 
-QString MainWindow::formatTime(qint64 seconds) const
-{
-    if (seconds < 60) {
-        return tr("%1 秒").arg(seconds);
-    } else if (seconds < 3600) {
-        return tr("%1 分钟").arg(seconds / 60);
-    } else {
-        return tr("%1 小时 %2 分钟").arg(seconds / 3600).arg((seconds % 3600) / 60);
-    }
-}
-
-bool MainWindow::validateInput()
-{
-    QString url = ui->urlEdit->text().trimmed();
-    QString savePath = ui->savePathEdit->text().trimmed();
-    
-    if (url.isEmpty()) {
-        showError(tr("请输入下载地址"));
-        return false;
-    }
-    
-    if (!isValidUrl(url)) {
-        showError(tr("请输入有效的下载地址"));
-        return false;
-    }
-    
-    if (savePath.isEmpty()) {
-        showError(tr("请选择保存位置"));
-        return false;
-    }
-    
-    if (!isValidPath(savePath)) {
-        showError(tr("保存路径无效"));
-        return false;
-    }
-    
-    return true;
-}
-
-bool MainWindow::isValidUrl(const QString &url) const
-{
-    // 简单的 URL 验证
-    if (url.startsWith("smb://") || url.startsWith("http://") || url.startsWith("https://")) {
-        return true;
-    }
-    
-    // 检查是否是网络路径
-    if (url.startsWith("\\\\") || url.startsWith("//")) {
-        return true;
-    }
-    
-    return false;
-}
-
-bool MainWindow::isValidPath(const QString &path) const
-{
-    QDir dir(path);
-    return dir.exists() || QDir().mkpath(path);
-}
 
 void MainWindow::loadTasks()
 {

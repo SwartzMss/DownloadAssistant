@@ -26,7 +26,6 @@ private slots:
     void onPauseTaskClicked();
     void onResumeTaskClicked();
     void onCancelTaskClicked();
-    void onRemoveTaskClicked();
     void onClearCompletedClicked();
     
     // 下载管理器事件
@@ -56,13 +55,7 @@ private:
     void setupUI();
     void setupConnections();
     void setupTable();
-    void setupTaskTable();
-    void connectSignalsSlots();
     void loadTasks();
-    void updateTaskRow(const QString &taskId);
-    void addTaskRow(const QString &taskId);
-    void removeTaskRow(const QString &taskId);
-    int findTaskRow(const QString &taskId);
     void updateStatusBar();
     void updateTableRow(int row, DownloadTask *task);
     void addTableRow(DownloadTask *task);
@@ -77,11 +70,7 @@ private:
     void onAllTasksCompleted();
     void showInfo(const QString &message);
     void showError(const QString &message);
-    bool validateInput();
     QString formatBytes(qint64 bytes) const;
-    QString formatTime(qint64 seconds) const;
-    bool isValidUrl(const QString &url) const;
-    bool isValidPath(const QString &path) const;
 };
 
 #endif // MAINWINDOW_H 
