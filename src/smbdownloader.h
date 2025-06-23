@@ -23,9 +23,6 @@ public:
     void resumeDownload(DownloadTask *task);
     void cancelDownload(DownloadTask *task);
     
-    // 状态查询
-    bool isDownloading(DownloadTask *task) const;
-    QList<DownloadTask*> activeDownloads() const;
 
 signals:
     void downloadStarted(DownloadTask *task);
@@ -63,9 +60,6 @@ private:
     // 辅助方法
     DownloadInfo* findDownloadInfo(DownloadTask *task);
     void cleanupDownload(DownloadTask *task);
-    bool setupResumeDownload(DownloadTask *task, DownloadInfo *info);
-    void updateTaskProgress(DownloadTask *task, qint64 bytesReceived, qint64 bytesTotal);
-    QString formatBytes(qint64 bytes) const;
 };
 
 #endif // SMBDOWNLOADER_H 

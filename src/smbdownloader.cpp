@@ -202,15 +202,7 @@ void SmbDownloader::cancelDownload(DownloadTask *task)
     emit downloadCancelled(task);
 }
 
-bool SmbDownloader::isDownloading(DownloadTask *task) const
-{
-    return m_activeDownloads.contains(task);
-}
 
-QList<DownloadTask*> SmbDownloader::activeDownloads() const
-{
-    return m_activeDownloads.keys();
-}
 
 void SmbDownloader::onDownloadProgress(qint64 bytesReceived, qint64 bytesTotal)
 {
@@ -385,40 +377,3 @@ void SmbDownloader::cleanupDownload(DownloadTask *task)
     delete info;
 }
 
-bool SmbDownloader::setupResumeDownload(DownloadTask *task, DownloadInfo *info)
-{
-    // 检查服务器是否支持断点续传
-    QNetworkRequest request(QUrl(task->url()));
-    request.setRawHeader("Range", "bytes=0-0");
-    
-    QNetworkReply *reply = m_networkManager->head(request);
-    
-    // 这里应该等待响应，但为了简化，我们假设支持
-    // 在实际应用中，应该使用异步方式处理
-    return true;
-}
-
-void SmbDownloader::updateTaskProgress(DownloadTask *task, qint64 bytesReceived, qint64 bytesTotal)
-{
-    if (bytesTotal > 0) {
-        task->setTotalSize(bytesTotal);
-    }
-    task->setDownloadedSize(bytesReceived);
-}
-
-QString SmbDownloader::formatBytes(qint64 bytes) const
-{
-    const qint64 KB = 1024;
-    const qint64 MB = 1024 * KB;
-    const qint64 GB = 1024 * MB;
-    
-    if (bytes >= GB) {
-        return QString("%1 GB").arg(static_cast<double>(bytes) / GB, 0, 'f', 2);
-    } else if (bytes >= MB) {
-        return QString("%1 MB").arg(static_cast<double>(bytes) / MB, 0, 'f', 2);
-    } else if (bytes >= KB) {
-        return QString("%1 KB").arg(static_cast<double>(bytes) / KB, 0, 'f', 2);
-    } else {
-        return QString("%1 B").arg(bytes);
-    }
-} 

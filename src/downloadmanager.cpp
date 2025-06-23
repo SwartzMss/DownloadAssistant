@@ -510,19 +510,3 @@ void DownloadManager::updateActiveDownloadCount()
     }
 }
 
-QString DownloadManager::generateTaskId() const
-{
-    return QUuid::createUuid().toString(QUuid::WithoutBraces);
-}
-
-void DownloadManager::connectTaskSignals(DownloadTask *task)
-{
-    connect(task, &DownloadTask::statusChanged,
-            this, &DownloadManager::onTaskStatusChanged);
-}
-
-void DownloadManager::disconnectTaskSignals(DownloadTask *task)
-{
-    disconnect(task, &DownloadTask::statusChanged,
-              this, &DownloadManager::onTaskStatusChanged);
-} 
