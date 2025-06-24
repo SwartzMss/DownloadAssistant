@@ -98,9 +98,10 @@ void MainWindow::setupUI()
 
     ui->remoteFileTable->setColumnCount(4);
     ui->remoteFileTable->setHorizontalHeaderLabels({tr("名称"), tr("大小"), tr("类型"), tr("操作")});
-    ui->remoteFileTable->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
-    for (int i = 1; i < 4; ++i)
-        ui->remoteFileTable->horizontalHeader()->setSectionResizeMode(i, QHeaderView::ResizeToContents);
+    // 允许用户拖动列宽，默认根据内容调整初始宽度
+    for (int i = 0; i < 4; ++i)
+        ui->remoteFileTable->horizontalHeader()->setSectionResizeMode(i, QHeaderView::Interactive);
+    ui->remoteFileTable->horizontalHeader()->setStretchLastSection(true);
 }
 
 void MainWindow::setupConnections()
@@ -438,6 +439,8 @@ void MainWindow::fetchSmbFileList(const QString &url)
         }
         ++row;
     }
+
+    ui->remoteFileTable->resizeColumnsToContents();
 
     LOG_INFO("SMB 文件列表获取完成");
 }
