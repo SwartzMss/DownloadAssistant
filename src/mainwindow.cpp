@@ -450,7 +450,9 @@ void MainWindow::onDownloadFileClicked(const QString &fileUrl)
     if (savePath.isEmpty())
         savePath = m_downloadManager->getDefaultSavePath();
 
-    m_downloadManager->addTask(fileUrl, savePath, DownloadTask::SMB);
+    // 添加任务后立即启动下载，避免用户还需手动点击开始
+    QString taskId = m_downloadManager->addTask(fileUrl, savePath, DownloadTask::SMB);
+    m_downloadManager->startTask(taskId);
 }
 
 
