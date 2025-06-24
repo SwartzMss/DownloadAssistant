@@ -6,11 +6,23 @@
 #include <QFileInfo>
 #include <QThread>
 #include <QDebug>
-#include <errno.h>
-#include <fcntl.h>
-#include <sys/stat.h>
-#include <smb2/libsmb2.h>
-#include "smbutils.h"
+
+static QString toUncPath(QString path)
+{
+    path.remove('\r');
+    path.remove('\n');
+    path = path.trimmed();
+    if (path.startsWith("smb://", Qt::CaseInsensitive)) {
+        QUrl u(path);
+        QString p = u.path();
+        if (p.startsWith('/'))
+            p.remove(0, 1);
+        p.replace('/', '\\');
+        return QStringLiteral("\\\\") + u.host() + QLatin1Char('\\') + p;
+    }
+    path.replace('/', '\\');
+    return path;
+}
 
 SmbWorker::SmbWorker(DownloadTask *task, QObject *parent)
     : QThread(parent), m_task(task), m_pauseRequested(false),
@@ -58,81 +70,27 @@ void SmbWorker::run()
 
     m_offset = file.size();
 
-    struct smb2_context *ctx = smb2_init_context();
-    if (!ctx) {
-        emit finished(false, QObject::tr("SMB2 上下文创建失败"));
+    QString unc = toUncPath(m_task->url());
+    QFile remoteFile(unc);
+    if (!remoteFile.open(QIODevice::ReadOnly)) {
+        file.close();
+        emit finished(false, QObject::tr("无法打开远程文件"));
         return;
     }
 
-    QString userInput = m_task->username();
-    QString domainInput = m_task->domain();
-
-    // Extract domain part from username like "DOMAIN\\user"
-    QString parsedDomain, parsedUser;
-    parseDomainUser(userInput, parsedDomain, parsedUser);
-
-    QString userStr = parsedUser;
-    QString domStr = domainInput.isEmpty() ? parsedDomain : domainInput; // prefer explicit domain
-
-    QByteArray user = userStr.toUtf8();
-    QByteArray pass = m_task->password().toUtf8();
-    QByteArray dom  = domStr.toUtf8();
-    if (!dom.isEmpty())
-        smb2_set_domain(ctx, dom.constData());
-    if (!user.isEmpty())
-        smb2_set_user(ctx, user.constData());
-    if (!pass.isEmpty())
-        smb2_set_password(ctx, pass.constData());
-
-    QStringList segments = url.path().split('/', Qt::SkipEmptyParts);
-    if (segments.isEmpty()) {
-        smb2_destroy_context(ctx);
-        emit finished(false, QObject::tr("无效的 SMB 路径"));
-        return;
-    }
-    QString share = segments.takeFirst();
-    QString remotePath = "/" + segments.join('/');
-
-    if (smb2_connect_share(ctx, url.host().toUtf8().constData(),
-                           share.toUtf8().constData(), user.isEmpty() ? NULL : user.constData()) < 0) {
-        QString err = QString::fromLocal8Bit(smb2_get_error(ctx));
-        smb2_destroy_context(ctx);
-        emit finished(false, err);
+    if (m_offset > 0 && !remoteFile.seek(m_offset)) {
+        remoteFile.close();
+        file.close();
+        emit finished(false, QObject::tr("无法定位远程文件"));
         return;
     }
 
-    struct smb2_stat_64 st;
-    if (smb2_stat(ctx, remotePath.toUtf8().constData(), &st) == 0) {
-        emit progress(m_offset, st.smb2_size);
-    } else {
-        st.smb2_size = 0;
-    }
-
-    struct smb2fh *remote = smb2_open(ctx, remotePath.toUtf8().constData(), O_RDONLY);
-    if (!remote) {
-        QString err = QString::fromLocal8Bit(smb2_get_error(ctx));
-        smb2_disconnect_share(ctx);
-        smb2_destroy_context(ctx);
-        emit finished(false, err);
-        return;
-    }
-
-    if (m_offset > 0) {
-        uint64_t current = 0;
-        if (smb2_lseek(ctx, remote, m_offset, SEEK_SET, &current) < 0) {
-            QString err = QString::fromLocal8Bit(smb2_get_error(ctx));
-            smb2_close(ctx, remote);
-            smb2_disconnect_share(ctx);
-            smb2_destroy_context(ctx);
-            emit finished(false, err);
-            return;
-        }
-    }
+    qint64 total = remoteFile.size();
+    emit progress(m_offset, total);
 
     const int bufSize = 4096;
-    uint8_t buf[bufSize];
+    char buf[bufSize];
     qint64 received = m_offset;
-    qint64 total = st.smb2_size;
 
     while (!m_cancelRequested) {
         if (m_pauseRequested) {
@@ -140,21 +98,18 @@ void SmbWorker::run()
             continue;
         }
 
-        int n = smb2_read(ctx, remote, buf, bufSize);
+        qint64 n = remoteFile.read(buf, bufSize);
         if (n < 0) {
-            QString err = QString::fromLocal8Bit(smb2_get_error(ctx));
-            smb2_close(ctx, remote);
-            smb2_disconnect_share(ctx);
-            smb2_destroy_context(ctx);
-            emit finished(false, err);
+            remoteFile.close();
+            file.close();
+            emit finished(false, remoteFile.errorString());
             return;
         }
         if (n == 0)
             break;
-        if (file.write(reinterpret_cast<char*>(buf), n) != n) {
-            smb2_close(ctx, remote);
-            smb2_disconnect_share(ctx);
-            smb2_destroy_context(ctx);
+        if (file.write(buf, n) != n) {
+            remoteFile.close();
+            file.close();
             emit finished(false, QObject::tr("写入文件失败"));
             return;
         }
@@ -162,9 +117,7 @@ void SmbWorker::run()
         emit progress(received, total);
     }
 
-    smb2_close(ctx, remote);
-    smb2_disconnect_share(ctx);
-    smb2_destroy_context(ctx);
+    remoteFile.close();
     file.close();
 
     if (m_cancelRequested) {

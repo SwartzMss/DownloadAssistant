@@ -48,14 +48,6 @@ public:
     ProtocolType protocol() const { return m_protocol; }
     void setProtocol(ProtocolType protocol);
 
-    QString username() const { return m_username; }
-    void setUsername(const QString &username) { m_username = username; }
-
-    QString domain() const { return m_domain; }
-    void setDomain(const QString &domain) { m_domain = domain; }
-
-    QString password() const { return m_password; }
-    void setPassword(const QString &password) { m_password = password; }
     
     // 状态和进度
     Status status() const { return m_status; }
@@ -106,9 +98,6 @@ private:
     QString m_url;
     QString m_savePath;
     QString m_fileName;
-    QString m_username;
-    QString m_domain;
-    QString m_password;
     ProtocolType m_protocol;
     Status m_status;
     double m_progress;

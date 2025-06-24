@@ -6,7 +6,6 @@
 #include <QFileDialog>
 #include <QStandardPaths>
 #include <QApplication>
-#include <QCheckBox>
 #include <QSystemTrayIcon>
 #include <QMenu>
 #include <QCloseEvent>
@@ -14,12 +13,27 @@
 #include <QSet>
 #include "logger.h"
 #include "tasktablewidget.h"
-#include <smb2/libsmb2.h>
-#include <smb2/smb2.h>
 #include <QPushButton>
 #include <QTableWidgetItem>
 #include <QHeaderView>
-#include "smbutils.h"
+#include <QUrl>
+
+static QString toUncPath(QString path)
+{
+    path.remove('\r');
+    path.remove('\n');
+    path = path.trimmed();
+    if (path.startsWith("smb://", Qt::CaseInsensitive)) {
+        QUrl u(path);
+        QString p = u.path();
+        if (p.startsWith('/'))
+            p.remove(0, 1);
+        p.replace('/', '\\');
+        return QStringLiteral("\\\\") + u.host() + QLatin1Char('\\') + p;
+    }
+    path.replace('/', '\\');
+    return path;
+}
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -34,9 +48,6 @@ MainWindow::MainWindow(QWidget *parent)
     
     ui->setupUi(this);
 
-    ui->usernameEdit->setEnabled(false);
-    ui->passwordEdit->setEnabled(false);
-    ui->domainEdit->setEnabled(false);
     
     setupUI();
     setupConnections();
@@ -104,11 +115,6 @@ void MainWindow::setupConnections()
     connect(ui->connectButton, &QPushButton::clicked, this, &MainWindow::onConnectClicked);
     connect(ui->browseButton, &QPushButton::clicked, this, &MainWindow::onBrowseClicked);
     connect(ui->clearButton, &QPushButton::clicked, this, &MainWindow::onClearClicked);
-    connect(ui->authCheckBox, &QCheckBox::toggled, this, [this](bool checked){
-        ui->usernameEdit->setEnabled(checked);
-        ui->passwordEdit->setEnabled(checked);
-        ui->domainEdit->setEnabled(checked);
-    });
     connect(ui->startAllButton, &QPushButton::clicked, this, &MainWindow::onStartAllClicked);
     connect(ui->pauseAllButton, &QPushButton::clicked, this, &MainWindow::onPauseAllClicked);
     connect(ui->removeButton, &QPushButton::clicked, this, &MainWindow::onRemoveClicked);
@@ -135,12 +141,9 @@ void MainWindow::setupConnections()
 void MainWindow::onConnectClicked()
 {
     LOG_INFO("点击连接按钮");
-    QString url = normalizeSmbUrl(ui->urlEdit->text());
+    QString url = ui->urlEdit->text().trimmed();
     if (url.isEmpty()) {
         showWarning(tr("请输入 SMB 地址"));
-        return;
-    }
-    if (!validateAuthFields()) {
         return;
     }
     LOG_INFO(QString("连接地址: %1").arg(url));
@@ -387,22 +390,6 @@ void MainWindow::showInfo(const QString &message)
     QMessageBox::information(this, tr("信息"), message);
 }
 
-bool MainWindow::validateAuthFields()
-{
-    if (!ui->authCheckBox->isChecked())
-        return true;
-
-    QString username = ui->usernameEdit->text().trimmed();
-    QString password = ui->passwordEdit->text().trimmed();
-
-    if (username.isEmpty() || password.isEmpty()) {
-        showWarning(tr("用户名和密码不能为空"));
-        return false;
-    }
-
-    return true;
-}
-
 QString MainWindow::formatBytes(qint64 bytes) const
 {
     const qint64 KB = 1024;
@@ -423,67 +410,21 @@ QString MainWindow::formatBytes(qint64 bytes) const
 void MainWindow::fetchSmbFileList(const QString &url)
 {
     LOG_INFO(QString("获取 SMB 文件列表: %1").arg(url));
-    QString normalizedUrl = normalizeSmbUrl(url);
+    QString uncPath = toUncPath(url);
     ui->remoteFileTable->setRowCount(0);
 
-    struct smb2_context *smb2 = smb2_init_context();
-    if (!smb2) {
-        showError(tr("SMB2 上下文创建失败"));
+    QDir dir(uncPath);
+    if (!dir.exists()) {
+        showError(tr("无法打开目录"));
         return;
     }
 
-    struct smb2_url *smburl = smb2_parse_url(smb2, normalizedUrl.toUtf8().constData());
-    if (!smburl) {
-        showError(tr("SMB URL 解析失败: %1").arg(QString::fromUtf8(smb2_get_error(smb2))));
-        smb2_destroy_context(smb2);
-        return;
-    }
-
-    QString userInput = ui->authCheckBox->isChecked() ? ui->usernameEdit->text() : QString();
-    QString passInput = ui->authCheckBox->isChecked() ? ui->passwordEdit->text() : QString();
-    QString domainInput = ui->authCheckBox->isChecked() ? ui->domainEdit->text() : QString();
-
-    // Always parse possible "DOMAIN\\user" syntax from username
-    QString parsedDomain, parsedUser;
-    parseDomainUser(userInput, parsedDomain, parsedUser);
-
-    QString username = parsedUser;                          // username without domain
-    QString domain = domainInput.isEmpty() ? parsedDomain   // prefer explicit domain
-                                           : domainInput;
-
-    if (!domain.isEmpty())
-        smb2_set_domain(smb2, domain.toUtf8().constData());
-    if (!username.isEmpty())
-        smb2_set_user(smb2, username.toUtf8().constData());
-    if (!passInput.isEmpty())
-        smb2_set_password(smb2, passInput.toUtf8().constData());
-
-    if (smb2_connect_share(smb2, smburl->server, smburl->share,
-                           username.isEmpty() ? nullptr : username.toUtf8().constData()) < 0) {
-        showError(tr("连接失败: %1").arg(QString::fromUtf8(smb2_get_error(smb2))));
-        smb2_destroy_url(smburl);
-        smb2_destroy_context(smb2);
-        return;
-    }
-
-    struct smb2dir *dir = smb2_opendir(smb2, smburl->path ? smburl->path : "/");
-    if (!dir) {
-        showError(tr("打开目录失败: %1").arg(QString::fromUtf8(smb2_get_error(smb2))));
-        smb2_disconnect_share(smb2);
-        smb2_destroy_url(smburl);
-        smb2_destroy_context(smb2);
-        return;
-    }
-
-    struct smb2dirent *ent;
+    QFileInfoList list = dir.entryInfoList(QDir::AllEntries | QDir::NoDotAndDotDot);
     int row = 0;
-    while ((ent = smb2_readdir(smb2, dir)) != nullptr) {
-        QString name = QString::fromUtf8(ent->name);
-        if (name == "." || name == "..")
-            continue;
-
-        bool isDir = ent->st.smb2_type == SMB2_TYPE_DIRECTORY;
-        qint64 size = ent->st.smb2_size;
+    for (const QFileInfo &info : list) {
+        QString name = info.fileName();
+        bool isDir = info.isDir();
+        qint64 size = info.size();
 
         ui->remoteFileTable->insertRow(row);
         ui->remoteFileTable->setItem(row, 0, new QTableWidgetItem(name));
@@ -504,36 +445,18 @@ void MainWindow::fetchSmbFileList(const QString &url)
         ++row;
     }
 
-    smb2_closedir(smb2, dir);
-    smb2_disconnect_share(smb2);
-    smb2_destroy_url(smburl);
-    smb2_destroy_context(smb2);
     LOG_INFO("SMB 文件列表获取完成");
 }
 
 void MainWindow::onDownloadFileClicked(const QString &fileUrl)
 {
-    if (!validateAuthFields())
-        return;
-
     LOG_INFO(QString("开始下载文件: %1").arg(fileUrl));
 
     QString savePath = ui->savePathEdit->text().trimmed();
     if (savePath.isEmpty())
         savePath = m_downloadManager->getDefaultSavePath();
 
-    QString userInput = ui->authCheckBox->isChecked() ? ui->usernameEdit->text() : QString();
-    QString passInput = ui->authCheckBox->isChecked() ? ui->passwordEdit->text() : QString();
-    QString domainInput = ui->authCheckBox->isChecked() ? ui->domainEdit->text() : QString();
-
-    // Separate domain from username input
-    QString parsedDomain, parsedUser;
-    parseDomainUser(userInput, parsedDomain, parsedUser);
-
-    QString username = parsedUser;
-    QString domain = domainInput.isEmpty() ? parsedDomain : domainInput;
-
-    m_downloadManager->addTask(fileUrl, savePath, DownloadTask::SMB, username, passInput, domain);
+    m_downloadManager->addTask(fileUrl, savePath, DownloadTask::SMB);
 }
 
 
