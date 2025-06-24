@@ -18,7 +18,7 @@
     <item>
      <widget class="QGroupBox" name="groupBox">
       <property name="title">
-       <string>新建下载任务</string>
+       <string>连接设置</string>
       </property>
       <layout class="QGridLayout" name="gridLayout">
        <item row="0" column="0">
@@ -40,7 +40,7 @@
        <item row="1" column="0">
         <widget class="QLabel" name="label_3">
          <property name="text">
-          <string>下载地址：</string>
+          <string>地址：</string>
          </property>
         </widget>
        </item>
@@ -54,9 +54,9 @@
           </widget>
          </item>
          <item>
-          <widget class="QPushButton" name="browseSmbButton">
+          <widget class="QPushButton" name="connectButton">
            <property name="text">
-            <string>浏览远程文件</string>
+            <string>连接</string>
            </property>
           </widget>
          </item>
@@ -121,13 +121,6 @@
        <item row="6" column="0" colspan="2">
         <layout class="QHBoxLayout" name="horizontalLayout_2">
          <item>
-          <widget class="QPushButton" name="addTaskButton">
-           <property name="text">
-            <string>添加下载任务</string>
-           </property>
-          </widget>
-         </item>
-         <item>
           <widget class="QPushButton" name="clearButton">
            <property name="text">
             <string>清空</string>
@@ -150,10 +143,43 @@
         </layout>
        </item>
       </layout>
-     </widget>
-    </item>
-    <item>
-     <widget class="QGroupBox" name="groupBox_2">
+      </widget>
+     </item>
+     <item>
+      <widget class="QGroupBox" name="remoteGroupBox">
+       <property name="title">
+        <string>远程文件列表</string>
+       </property>
+       <layout class="QVBoxLayout" name="remoteLayout">
+        <item>
+         <widget class="QTableWidget" name="remoteFileTable">
+          <column>
+           <property name="text">
+            <string>名称</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>大小</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>类型</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>操作</string>
+           </property>
+          </column>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </item>
+     <item>
+      <widget class="QGroupBox" name="groupBox_2">
       <property name="title">
        <string>下载任务列表</string>
       </property>

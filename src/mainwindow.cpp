@@ -13,8 +13,12 @@
 #include <algorithm>
 #include <QSet>
 #include "logger.h"
-#include "remote_smbfile_dialog.h"
 #include "tasktablewidget.h"
+#include <smb2/libsmb2.h>
+#include <smb2/smb2.h>
+#include <QPushButton>
+#include <QTableWidgetItem>
+#include <QHeaderView>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -81,15 +85,21 @@ void MainWindow::setupUI()
     // 设置窗口属性
     setWindowTitle(tr("DownloadAssistant - 下载助手"));
     resize(800, 600);
-    
+
     // 设置状态栏
     statusBar()->showMessage(tr("就绪"));
+
+    ui->remoteFileTable->setColumnCount(4);
+    ui->remoteFileTable->setHorizontalHeaderLabels({tr("名称"), tr("大小"), tr("类型"), tr("操作")});
+    ui->remoteFileTable->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
+    for (int i = 1; i < 4; ++i)
+        ui->remoteFileTable->horizontalHeader()->setSectionResizeMode(i, QHeaderView::ResizeToContents);
 }
 
 void MainWindow::setupConnections()
 {
     // 连接 UI 信号
-    connect(ui->addTaskButton, &QPushButton::clicked, this, &MainWindow::onAddTaskClicked);
+    connect(ui->connectButton, &QPushButton::clicked, this, &MainWindow::onConnectClicked);
     connect(ui->browseButton, &QPushButton::clicked, this, &MainWindow::onBrowseClicked);
     connect(ui->clearButton, &QPushButton::clicked, this, &MainWindow::onClearClicked);
     connect(ui->authCheckBox, &QCheckBox::toggled, this, [this](bool checked){
@@ -104,20 +114,6 @@ void MainWindow::setupConnections()
     connect(ui->taskTable, &TaskTableWidget::pauseTaskRequested, this, &MainWindow::onPauseTaskClicked);
     connect(ui->taskTable, &TaskTableWidget::resumeTaskRequested, this, &MainWindow::onResumeTaskClicked);
     connect(ui->taskTable, &TaskTableWidget::cancelTaskRequested, this, &MainWindow::onCancelTaskClicked);
-    connect(ui->browseSmbButton, &QPushButton::clicked, this, [this]() {
-        QString currentUrl = ui->urlEdit->text();
-        RemoteSmbFileDialog dlg(this);
-        dlg.setSmbUrl(currentUrl);
-        if (dlg.exec() == QDialog::Accepted) {
-            QStringList files = dlg.selectedFiles();
-            if (!files.isEmpty()) {
-                // 只取第一个文件填入下载地址（如需批量可扩展）
-                QString baseUrl = currentUrl;
-                if (!baseUrl.endsWith('/')) baseUrl += '/';
-                ui->urlEdit->setText(baseUrl + files.first());
-            }
-        }
-    });
     
     // 连接下载管理器信号
     connect(m_downloadManager, &DownloadManager::taskAdded, this, &MainWindow::onTaskAdded);
@@ -133,33 +129,14 @@ void MainWindow::setupConnections()
 }
 
 
-void MainWindow::onAddTaskClicked()
+void MainWindow::onConnectClicked()
 {
     QString url = ui->urlEdit->text().trimmed();
     if (url.isEmpty()) {
-        QMessageBox::warning(this, tr("警告"), tr("请输入下载地址"));
+        QMessageBox::warning(this, tr("警告"), tr("请输入 SMB 地址"));
         return;
     }
-    
-    QString savePath = ui->savePathEdit->text().trimmed();
-    if (savePath.isEmpty()) {
-        savePath = m_downloadManager->getDefaultSavePath();
-    }
-    
-    DownloadTask::ProtocolType protocol = static_cast<DownloadTask::ProtocolType>(ui->protocolComboBox->currentData().toInt());
-    
-    QString username;
-    QString password;
-    if (ui->authCheckBox->isChecked()) {
-        username = ui->usernameEdit->text();
-        password = ui->passwordEdit->text();
-    }
-
-    QString taskId = m_downloadManager->addTask(url, savePath, protocol, username, password);
-    
-    // 清空输入框
-    ui->urlEdit->clear();
-    ui->savePathEdit->clear();
+    fetchSmbFileList(url);
 }
 
 void MainWindow::onBrowseClicked()
@@ -176,6 +153,7 @@ void MainWindow::onClearClicked()
 {
     ui->urlEdit->clear();
     ui->savePathEdit->setText(m_downloadManager->getDefaultSavePath());
+    ui->remoteFileTable->setRowCount(0);
 }
 
 void MainWindow::onStartAllClicked()
@@ -387,6 +365,92 @@ QString MainWindow::formatBytes(qint64 bytes) const
     } else {
         return QString("%1 B").arg(bytes);
     }
+}
+
+void MainWindow::fetchSmbFileList(const QString &url)
+{
+    ui->remoteFileTable->setRowCount(0);
+
+    struct smb2_context *smb2 = smb2_init_context();
+    if (!smb2) {
+        showError(tr("SMB2 上下文创建失败"));
+        return;
+    }
+
+    struct smb2_url *smburl = smb2_parse_url(smb2, url.toUtf8().constData());
+    if (!smburl) {
+        showError(tr("SMB URL 解析失败: %1").arg(QString::fromUtf8(smb2_get_error(smb2))));
+        smb2_destroy_context(smb2);
+        return;
+    }
+
+    QString username = ui->authCheckBox->isChecked() ? ui->usernameEdit->text() : QString();
+    QString password = ui->authCheckBox->isChecked() ? ui->passwordEdit->text() : QString();
+    if (!username.isEmpty()) smb2_set_user(smb2, username.toUtf8().constData());
+    if (!password.isEmpty()) smb2_set_password(smb2, password.toUtf8().constData());
+
+    if (smb2_connect_share(smb2, smburl->server, smburl->share,
+                           username.isEmpty() ? nullptr : username.toUtf8().constData()) < 0) {
+        showError(tr("连接失败: %1").arg(QString::fromUtf8(smb2_get_error(smb2))));
+        smb2_destroy_url(smburl);
+        smb2_destroy_context(smb2);
+        return;
+    }
+
+    struct smb2dir *dir = smb2_opendir(smb2, smburl->path ? smburl->path : "/");
+    if (!dir) {
+        showError(tr("打开目录失败: %1").arg(QString::fromUtf8(smb2_get_error(smb2))));
+        smb2_disconnect_share(smb2);
+        smb2_destroy_url(smburl);
+        smb2_destroy_context(smb2);
+        return;
+    }
+
+    struct smb2dirent *ent;
+    int row = 0;
+    while ((ent = smb2_readdir(smb2, dir)) != nullptr) {
+        QString name = QString::fromUtf8(ent->name);
+        if (name == "." || name == "..")
+            continue;
+
+        bool isDir = ent->st.smb2_type == SMB2_TYPE_DIRECTORY;
+        qint64 size = ent->st.smb2_size;
+
+        ui->remoteFileTable->insertRow(row);
+        ui->remoteFileTable->setItem(row, 0, new QTableWidgetItem(name));
+        ui->remoteFileTable->setItem(row, 1, new QTableWidgetItem(isDir ? QString() : formatBytes(size)));
+        ui->remoteFileTable->setItem(row, 2, new QTableWidgetItem(isDir ? tr("目录") : tr("文件")));
+
+        if (!isDir) {
+            QPushButton *btn = new QPushButton(tr("下载"));
+            ui->remoteFileTable->setCellWidget(row, 3, btn);
+            QString fullUrl = url;
+            if (!fullUrl.endsWith('/'))
+                fullUrl += '/';
+            fullUrl += name;
+            connect(btn, &QPushButton::clicked, this, [this, fullUrl]() {
+                onDownloadFileClicked(fullUrl);
+            });
+        }
+        ++row;
+    }
+
+    smb2_closedir(smb2, dir);
+    smb2_disconnect_share(smb2);
+    smb2_destroy_url(smburl);
+    smb2_destroy_context(smb2);
+}
+
+void MainWindow::onDownloadFileClicked(const QString &fileUrl)
+{
+    QString savePath = ui->savePathEdit->text().trimmed();
+    if (savePath.isEmpty())
+        savePath = m_downloadManager->getDefaultSavePath();
+
+    QString username = ui->authCheckBox->isChecked() ? ui->usernameEdit->text() : QString();
+    QString password = ui->authCheckBox->isChecked() ? ui->passwordEdit->text() : QString();
+
+    m_downloadManager->addTask(fileUrl, savePath, DownloadTask::SMB, username, password);
 }
 
 

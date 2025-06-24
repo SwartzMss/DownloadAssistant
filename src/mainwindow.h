@@ -23,7 +23,7 @@ public:
 
 private slots:
     // UI 事件处理
-    void onAddTaskClicked();
+    void onConnectClicked();
     void onBrowseClicked();
     void onStartTaskClicked(DownloadTask *task);
     void onPauseTaskClicked(DownloadTask *task);
@@ -45,6 +45,7 @@ private slots:
     // 定时器事件
     void onUpdateTimer();
     void onTrayIconActivated(QSystemTrayIcon::ActivationReason reason);
+    void onDownloadFileClicked(const QString &fileName);
 
 private:
     // UI 组件
@@ -70,6 +71,7 @@ private:
     void showInfo(const QString &message);
     void showError(const QString &message);
     QString formatBytes(qint64 bytes) const;
+    void fetchSmbFileList(const QString &url);
 
     void createTrayIcon();
     void createTrayMenu();
