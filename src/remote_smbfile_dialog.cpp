@@ -5,6 +5,7 @@
 #include <QInputDialog>
 #include <QDebug>
 #include <QApplication>
+#include "smbutils.h"
 extern "C" {
 #include <smb2/libsmb2.h>
 #include <smb2/smb2.h>
@@ -61,7 +62,7 @@ QStringList RemoteSmbFileDialog::selectedFiles() const
 
 void RemoteSmbFileDialog::onFetchClicked()
 {
-    QString url = urlEdit->text().trimmed();
+    QString url = normalizeSmbUrl(urlEdit->text());
     if (url.isEmpty()) {
         QMessageBox::warning(this, tr("提示"), tr("请输入 SMB 目录地址"));
         return;
@@ -71,7 +72,8 @@ void RemoteSmbFileDialog::onFetchClicked()
 
 void RemoteSmbFileDialog::fetchSmbFileList(const QString &url)
 {
-    m_currentUrl = url;
+    QString normalizedUrl = normalizeSmbUrl(url);
+    m_currentUrl = normalizedUrl;
     m_fileList.clear();
     fileListWidget->clear();
     statusLabel->setText(tr("正在获取文件列表..."));
@@ -85,7 +87,7 @@ void RemoteSmbFileDialog::fetchSmbFileList(const QString &url)
     }
 
     // 解析 URL
-    struct smb2_url *smburl = smb2_parse_url(smb2, url.toUtf8().constData());
+    struct smb2_url *smburl = smb2_parse_url(smb2, normalizedUrl.toUtf8().constData());
     if (!smburl) {
         statusLabel->setText(tr("SMB URL 解析失败: %1").arg(QString::fromUtf8(smb2_get_error(smb2))));
         smb2_destroy_context(smb2);

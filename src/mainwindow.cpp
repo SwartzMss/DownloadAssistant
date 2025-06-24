@@ -19,6 +19,7 @@
 #include <QPushButton>
 #include <QTableWidgetItem>
 #include <QHeaderView>
+#include "smbutils.h"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -131,7 +132,7 @@ void MainWindow::setupConnections()
 
 void MainWindow::onConnectClicked()
 {
-    QString url = ui->urlEdit->text().trimmed();
+    QString url = normalizeSmbUrl(ui->urlEdit->text());
     if (url.isEmpty()) {
         QMessageBox::warning(this, tr("警告"), tr("请输入 SMB 地址"));
         return;
@@ -369,6 +370,7 @@ QString MainWindow::formatBytes(qint64 bytes) const
 
 void MainWindow::fetchSmbFileList(const QString &url)
 {
+    QString normalizedUrl = normalizeSmbUrl(url);
     ui->remoteFileTable->setRowCount(0);
 
     struct smb2_context *smb2 = smb2_init_context();
@@ -377,7 +379,7 @@ void MainWindow::fetchSmbFileList(const QString &url)
         return;
     }
 
-    struct smb2_url *smburl = smb2_parse_url(smb2, url.toUtf8().constData());
+    struct smb2_url *smburl = smb2_parse_url(smb2, normalizedUrl.toUtf8().constData());
     if (!smburl) {
         showError(tr("SMB URL 解析失败: %1").arg(QString::fromUtf8(smb2_get_error(smb2))));
         smb2_destroy_context(smb2);
