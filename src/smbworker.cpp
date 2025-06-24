@@ -10,6 +10,7 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <smb2/libsmb2.h>
+#include "smbutils.h"
 
 SmbWorker::SmbWorker(DownloadTask *task, QObject *parent)
     : QThread(parent), m_task(task), m_pauseRequested(false),
@@ -63,8 +64,16 @@ void SmbWorker::run()
         return;
     }
 
-    QByteArray user = m_task->username().toUtf8();
+    QString userStr = m_task->username();
+    QString domStr = m_task->domain();
+    if (domStr.isEmpty())
+        parseDomainUser(userStr, domStr, userStr);
+
+    QByteArray user = userStr.toUtf8();
     QByteArray pass = m_task->password().toUtf8();
+    QByteArray dom  = domStr.toUtf8();
+    if (!dom.isEmpty())
+        smb2_set_domain(ctx, dom.constData());
     if (!user.isEmpty())
         smb2_set_user(ctx, user.constData());
     if (!pass.isEmpty())

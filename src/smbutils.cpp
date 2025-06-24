@@ -25,3 +25,16 @@ QString normalizeSmbUrl(const QString &input)
     url.prepend("smb://");
     return url;
 }
+
+void parseDomainUser(const QString &input, QString &domain, QString &user)
+{
+    user = input;
+    domain.clear();
+    int idx = input.indexOf('\x5c'); // backslash
+    if (idx < 0)
+        idx = input.indexOf(';');
+    if (idx > 0) {
+        domain = input.left(idx);
+        user = input.mid(idx + 1);
+    }
+}
