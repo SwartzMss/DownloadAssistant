@@ -1,6 +1,6 @@
 # DownloadAssistant
 
-DownloadAssistant 是一个基于 **Qt** 开发的 Windows 下载工具，使用 **MSVC** 编译，通过 `.pro` 文件进行构建。目前实现了对 **SMB** 和 **HTTP/HTTPS** 协议的下载并支持断点续传。
+DownloadAssistant 是一个基于 **Qt** 开发的 Windows 下载工具，使用 **MSVC** 编译，通过 `.pro` 文件进行构建。目前实现了对 **SMB** 协议的下载并支持断点续传。
 
 ## 功能特性
 
@@ -13,7 +13,6 @@ DownloadAssistant 是一个基于 **Qt** 开发的 Windows 下载工具，使用
 - 任务状态持久化保存
 - **日志系统**：记录线程ID、文件名和行号，便于调试
 - **配置文件**：保存在 exe 同级目录，便于部署
-- 支持 HTTP/HTTPS 下载
 
 在新建任务时，如果目标 SMB 服务器需要身份验证，可勾选“使用身份验证”并输入用户名和密码。
 
@@ -84,7 +83,6 @@ DownloadAssistant/
 
 ## 开发计划
 
-- [x] 支持 HTTP/HTTPS 协议下载
 - [ ] 添加下载速度限制功能
 - [ ] 支持下载队列管理
 - [x] 添加系统托盘功能

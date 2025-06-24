@@ -23,8 +23,7 @@ public:
     Q_ENUM(Status)
 
     enum ProtocolType {
-        SMB,            // SMB 协议
-        HTTP_HTTPS      // HTTP/HTTPS 协议
+        SMB            // SMB 协议
     };
     Q_ENUM(ProtocolType)
 
