@@ -21,7 +21,8 @@ public:
                     const QString &savePath = "",
                     DownloadTask::ProtocolType protocol = DownloadTask::SMB,
                     const QString &username = QString(),
-                    const QString &password = QString());
+                    const QString &password = QString(),
+                    const QString &domain = QString());
     void removeTask(const QString &taskId);
     void removeCompletedTasks();
     

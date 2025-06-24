@@ -36,6 +36,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     ui->usernameEdit->setEnabled(false);
     ui->passwordEdit->setEnabled(false);
+    ui->domainEdit->setEnabled(false);
     
     setupUI();
     setupConnections();
@@ -106,6 +107,7 @@ void MainWindow::setupConnections()
     connect(ui->authCheckBox, &QCheckBox::toggled, this, [this](bool checked){
         ui->usernameEdit->setEnabled(checked);
         ui->passwordEdit->setEnabled(checked);
+        ui->domainEdit->setEnabled(checked);
     });
     connect(ui->startAllButton, &QPushButton::clicked, this, &MainWindow::onStartAllClicked);
     connect(ui->pauseAllButton, &QPushButton::clicked, this, &MainWindow::onPauseAllClicked);
@@ -407,6 +409,10 @@ void MainWindow::fetchSmbFileList(const QString &url)
 
     QString username = ui->authCheckBox->isChecked() ? ui->usernameEdit->text() : QString();
     QString password = ui->authCheckBox->isChecked() ? ui->passwordEdit->text() : QString();
+    QString domain = ui->authCheckBox->isChecked() ? ui->domainEdit->text() : QString();
+    if (domain.isEmpty())
+        parseDomainUser(username, domain, username);
+    if (!domain.isEmpty()) smb2_set_domain(smb2, domain.toUtf8().constData());
     if (!username.isEmpty()) smb2_set_user(smb2, username.toUtf8().constData());
     if (!password.isEmpty()) smb2_set_password(smb2, password.toUtf8().constData());
 
@@ -473,8 +479,11 @@ void MainWindow::onDownloadFileClicked(const QString &fileUrl)
 
     QString username = ui->authCheckBox->isChecked() ? ui->usernameEdit->text() : QString();
     QString password = ui->authCheckBox->isChecked() ? ui->passwordEdit->text() : QString();
+    QString domain = ui->authCheckBox->isChecked() ? ui->domainEdit->text() : QString();
+    if (domain.isEmpty())
+        parseDomainUser(username, domain, username);
 
-    m_downloadManager->addTask(fileUrl, savePath, DownloadTask::SMB, username, password);
+    m_downloadManager->addTask(fileUrl, savePath, DownloadTask::SMB, username, password, domain);
 }
 
 
