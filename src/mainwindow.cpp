@@ -8,6 +8,8 @@
 #include <QApplication>
 #include <QSystemTrayIcon>
 #include <QMenu>
+#include <QSettings>
+#include <QCoreApplication>
 #include <QCloseEvent>
 #include <algorithm>
 #include <QSet>
@@ -43,6 +45,7 @@ MainWindow::MainWindow(QWidget *parent)
     , m_taskModel(new QStandardItemModel(this))
     , m_trayIcon(nullptr)
     , m_trayMenu(nullptr)
+    , m_settings(new QSettings(QCoreApplication::applicationDirPath() + "/config.ini", QSettings::IniFormat, this))
 {
     LOG_INFO("MainWindow 初始化开始");
     
@@ -63,9 +66,9 @@ MainWindow::MainWindow(QWidget *parent)
     
     // 加载已保存的任务
     updateStatusBar();
-    
-    
-    // 加载任务
+
+    // 加载书签和任务
+    loadBookmarks();
     loadTasks();
 
     // 设置应用程序和窗口图标
@@ -110,6 +113,8 @@ void MainWindow::setupConnections()
     connect(ui->connectButton, &QPushButton::clicked, this, &MainWindow::onConnectClicked);
     connect(ui->browseButton, &QPushButton::clicked, this, &MainWindow::onBrowseClicked);
     connect(ui->clearButton, &QPushButton::clicked, this, &MainWindow::onClearClicked);
+    connect(ui->addBookmarkButton, &QPushButton::clicked, this, &MainWindow::onAddBookmarkClicked);
+    connect(ui->bookmarkCombo, &QComboBox::currentTextChanged, this, &MainWindow::onBookmarkSelected);
     connect(ui->startAllButton, &QPushButton::clicked, this, &MainWindow::onStartAllClicked);
     connect(ui->pauseAllButton, &QPushButton::clicked, this, &MainWindow::onPauseAllClicked);
     connect(ui->removeButton, &QPushButton::clicked, this, &MainWindow::onRemoveClicked);
@@ -163,6 +168,34 @@ void MainWindow::onClearClicked()
     ui->urlEdit->clear();
     ui->savePathEdit->setText(m_downloadManager->getDefaultSavePath());
     ui->remoteFileTable->setRowCount(0);
+}
+
+void MainWindow::onAddBookmarkClicked()
+{
+    QString alias = ui->aliasEdit->text().trimmed();
+    QString url = ui->urlEdit->text().trimmed();
+    if (alias.isEmpty() || url.isEmpty()) {
+        showWarning(tr("书签名称和地址不能为空"));
+        return;
+    }
+
+    m_bookmarks[alias] = url;
+    if (ui->bookmarkCombo->findText(alias) == -1)
+        ui->bookmarkCombo->addItem(alias);
+
+    m_settings->beginGroup("Bookmarks");
+    m_settings->setValue(alias, url);
+    m_settings->endGroup();
+
+    ui->aliasEdit->clear();
+    showInfo(tr("书签已保存"));
+}
+
+void MainWindow::onBookmarkSelected(const QString &name)
+{
+    if (m_bookmarks.contains(name)) {
+        ui->urlEdit->setText(m_bookmarks.value(name));
+    }
 }
 
 void MainWindow::onStartAllClicked()
@@ -471,6 +504,22 @@ void MainWindow::loadTasks()
     }
 
     updateStatusBar();
+}
+
+void MainWindow::loadBookmarks()
+{
+    LOG_INFO("加载书签");
+    ui->bookmarkCombo->clear();
+    m_bookmarks.clear();
+
+    m_settings->beginGroup("Bookmarks");
+    const QStringList keys = m_settings->allKeys();
+    for (const QString &key : keys) {
+        QString url = m_settings->value(key).toString();
+        m_bookmarks[key] = url;
+        ui->bookmarkCombo->addItem(key);
+    }
+    m_settings->endGroup();
 }
 
 void MainWindow::onTaskProgress(const QString &taskId, qint64 bytesReceived, qint64 bytesTotal)
