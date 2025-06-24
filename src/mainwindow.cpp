@@ -64,12 +64,6 @@ MainWindow::MainWindow(QWidget *parent)
     // 加载已保存的任务
     updateStatusBar();
     
-    // 初始化协议选择下拉框
-    ui->protocolComboBox->clear();
-    ui->protocolComboBox->addItem(tr("SMB"), static_cast<int>(DownloadTask::SMB));
-    
-    // 设置下拉框的显示项数，有助于稳定弹出行为
-    ui->protocolComboBox->setMaxVisibleItems(5);
     
     // 加载任务
     loadTasks();

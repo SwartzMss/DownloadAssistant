@@ -12,8 +12,8 @@ TaskTableWidget::TaskTableWidget(QWidget *parent)
 
 void TaskTableWidget::setupTable()
 {
-    setColumnCount(8);
-    setHorizontalHeaderLabels({tr("协议"), tr("文件名"), tr("状态"), tr("进度"),
+    setColumnCount(7);
+    setHorizontalHeaderLabels({tr("文件名"), tr("状态"), tr("进度"),
                                tr("速度"), tr("大小"), tr("剩余时间"), tr("操作")});
 
     setAlternatingRowColors(true);
@@ -21,14 +21,13 @@ void TaskTableWidget::setupTable()
     setEditTriggers(QAbstractItemView::NoEditTriggers);
 
     horizontalHeader()->setStretchLastSection(false);
-    horizontalHeader()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
-    horizontalHeader()->setSectionResizeMode(1, QHeaderView::Stretch);
+    horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
+    horizontalHeader()->setSectionResizeMode(1, QHeaderView::ResizeToContents);
     horizontalHeader()->setSectionResizeMode(2, QHeaderView::ResizeToContents);
     horizontalHeader()->setSectionResizeMode(3, QHeaderView::ResizeToContents);
     horizontalHeader()->setSectionResizeMode(4, QHeaderView::ResizeToContents);
     horizontalHeader()->setSectionResizeMode(5, QHeaderView::ResizeToContents);
     horizontalHeader()->setSectionResizeMode(6, QHeaderView::ResizeToContents);
-    horizontalHeader()->setSectionResizeMode(7, QHeaderView::ResizeToContents);
 }
 
 void TaskTableWidget::addTask(DownloadTask *task)
@@ -36,24 +35,21 @@ void TaskTableWidget::addTask(DownloadTask *task)
     int row = rowCount();
     insertRow(row);
 
-    QTableWidgetItem *protocolItem = new QTableWidgetItem(task->protocolText());
-    protocolItem->setData(Qt::UserRole, QVariant::fromValue(static_cast<void*>(task)));
-    setItem(row, 0, protocolItem);
 
     QTableWidgetItem *fileNameItem = new QTableWidgetItem(task->fileName());
     fileNameItem->setData(Qt::UserRole, QVariant::fromValue(static_cast<void*>(task)));
-    setItem(row, 1, fileNameItem);
+    setItem(row, 0, fileNameItem);
 
-    setItem(row, 2, new QTableWidgetItem(task->statusText()));
+    setItem(row, 1, new QTableWidgetItem(task->statusText()));
 
     QProgressBar *progressBar = new QProgressBar();
     progressBar->setRange(0, 100);
     progressBar->setValue(0);
-    setCellWidget(row, 3, progressBar);
+    setCellWidget(row, 2, progressBar);
 
-    setItem(row, 4, new QTableWidgetItem(task->speedText()));
-    setItem(row, 5, new QTableWidgetItem(formatBytes(task->downloadedSize())));
-    setItem(row, 6, new QTableWidgetItem(task->timeRemainingText()));
+    setItem(row, 3, new QTableWidgetItem(task->speedText()));
+    setItem(row, 4, new QTableWidgetItem(formatBytes(task->downloadedSize())));
+    setItem(row, 5, new QTableWidgetItem(task->timeRemainingText()));
 
     createOperationButtons(row, task);
 
@@ -86,22 +82,21 @@ void TaskTableWidget::updateTask(DownloadTask *task)
     if (row < 0)
         return;
 
-    item(row,0)->setText(task->protocolText());
-    item(row,1)->setText(task->fileName());
-    item(row,2)->setText(task->statusText());
+    item(row,0)->setText(task->fileName());
+    item(row,1)->setText(task->statusText());
 
-    QProgressBar *progressBar = qobject_cast<QProgressBar*>(cellWidget(row,3));
+    QProgressBar *progressBar = qobject_cast<QProgressBar*>(cellWidget(row,2));
     if (progressBar)
         progressBar->setValue(static_cast<int>(task->progress()));
 
-    item(row,4)->setText(task->speedText());
+    item(row,3)->setText(task->speedText());
 
     QString sizeText = formatBytes(task->downloadedSize());
     if (task->fileSize() > 0)
         sizeText += " / " + formatBytes(task->fileSize());
-    item(row,5)->setText(sizeText);
+    item(row,4)->setText(sizeText);
 
-    item(row,6)->setText(task->timeRemainingText());
+    item(row,5)->setText(task->timeRemainingText());
 
     updateOperationButtons(row, task);
 }
@@ -128,12 +123,12 @@ void TaskTableWidget::createOperationButtons(int row, DownloadTask *task)
     layout->addWidget(resumeButton);
     layout->addWidget(cancelButton);
 
-    setCellWidget(row, 7, widget);
+    setCellWidget(row, 6, widget);
 }
 
 void TaskTableWidget::updateOperationButtons(int row, DownloadTask *task)
 {
-    QWidget *widget = cellWidget(row, 7);
+    QWidget *widget = cellWidget(row, 6);
     if (!widget) return;
 
     QList<QPushButton*> buttons = widget->findChildren<QPushButton*>();
