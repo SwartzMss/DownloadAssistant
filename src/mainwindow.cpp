@@ -68,7 +68,7 @@ MainWindow::MainWindow(QWidget *parent)
     
     // 托盘可用性判断
     if (!QSystemTrayIcon::isSystemTrayAvailable()) {
-        QMessageBox::critical(this, tr("错误"), tr("系统托盘不可用！"));
+        showError(tr("系统托盘不可用！"));
         return;
     }
     createTrayMenu();
@@ -134,29 +134,34 @@ void MainWindow::setupConnections()
 
 void MainWindow::onConnectClicked()
 {
+    LOG_INFO("点击连接按钮");
     QString url = normalizeSmbUrl(ui->urlEdit->text());
     if (url.isEmpty()) {
-        QMessageBox::warning(this, tr("警告"), tr("请输入 SMB 地址"));
+        showWarning(tr("请输入 SMB 地址"));
         return;
     }
     if (!validateAuthFields()) {
         return;
     }
+    LOG_INFO(QString("连接地址: %1").arg(url));
     fetchSmbFileList(url);
 }
 
 void MainWindow::onBrowseClicked()
 {
-    QString dir = QFileDialog::getExistingDirectory(this, tr("选择保存目录"), 
+    LOG_INFO("点击浏览按钮");
+    QString dir = QFileDialog::getExistingDirectory(this, tr("选择保存目录"),
                                                    ui->savePathEdit->text());
     if (!dir.isEmpty()) {
         ui->savePathEdit->setText(dir);
         m_downloadManager->setDefaultSavePath(dir);
+        LOG_INFO(QString("选择保存路径: %1").arg(dir));
     }
 }
 
 void MainWindow::onClearClicked()
 {
+    LOG_INFO("清空输入");
     ui->urlEdit->clear();
     ui->savePathEdit->setText(m_downloadManager->getDefaultSavePath());
     ui->remoteFileTable->setRowCount(0);
@@ -164,18 +169,21 @@ void MainWindow::onClearClicked()
 
 void MainWindow::onStartAllClicked()
 {
+    LOG_INFO("开始全部任务");
     m_downloadManager->startAllTasks();
     showInfo(tr("已开始所有任务"));
 }
 
 void MainWindow::onPauseAllClicked()
 {
+    LOG_INFO("暂停全部任务");
     m_downloadManager->pauseAllTasks();
     showInfo(tr("已暂停所有任务"));
 }
 
 void MainWindow::onRemoveClicked()
 {
+    LOG_INFO("点击删除任务");
     QList<QTableWidgetItem*> selectedItems = ui->taskTable->selectedItems();
     if (selectedItems.isEmpty()) {
         showError(tr("请先选择要删除的任务"));
@@ -196,6 +204,7 @@ void MainWindow::onRemoveClicked()
         if (item) {
             DownloadTask *task = static_cast<DownloadTask*>(item->data(Qt::UserRole).value<void*>());
             if (task) {
+                LOG_INFO(QString("删除任务 - ID: %1").arg(task->id()));
                 m_downloadManager->removeTask(task->id());
             }
         }
@@ -205,6 +214,7 @@ void MainWindow::onRemoveClicked()
 
 void MainWindow::onClearCompletedClicked()
 {
+    LOG_INFO("清空已完成的任务");
     m_downloadManager->removeCompletedTasks();
     showInfo(tr("已清空已完成的任务"));
 }
@@ -213,6 +223,7 @@ void MainWindow::onStartTaskClicked(DownloadTask *task)
 {
     if (!task)
         return;
+    LOG_INFO(QString("开始任务 - ID: %1").arg(task->id()));
     m_downloadManager->startTask(task->id());
 }
 
@@ -220,6 +231,7 @@ void MainWindow::onPauseTaskClicked(DownloadTask *task)
 {
     if (!task)
         return;
+    LOG_INFO(QString("暂停任务 - ID: %1").arg(task->id()));
     m_downloadManager->pauseTask(task->id());
 }
 
@@ -227,6 +239,7 @@ void MainWindow::onResumeTaskClicked(DownloadTask *task)
 {
     if (!task)
         return;
+    LOG_INFO(QString("恢复任务 - ID: %1").arg(task->id()));
     m_downloadManager->resumeTask(task->id());
 }
 
@@ -234,6 +247,7 @@ void MainWindow::onCancelTaskClicked(DownloadTask *task)
 {
     if (!task)
         return;
+    LOG_INFO(QString("取消任务 - ID: %1").arg(task->id()));
     m_downloadManager->cancelTask(task->id());
 }
 
@@ -243,6 +257,7 @@ void MainWindow::onTaskAdded(const QString &taskId)
     if (task) {
         ui->taskTable->addTask(task);
         updateStatusBar();
+        LOG_INFO(QString("任务已添加到界面 - ID: %1").arg(taskId));
     }
 }
 
@@ -255,6 +270,7 @@ void MainWindow::onTaskRemoved(const QString &taskId)
             DownloadTask *task = static_cast<DownloadTask*>(item->data(Qt::UserRole).value<void*>());
             if (task && task->id() == taskId) {
                 ui->taskTable->removeTask(task);
+                LOG_INFO(QString("任务已从界面移除 - ID: %1").arg(taskId));
                 break;
             }
         }
@@ -267,6 +283,7 @@ void MainWindow::onTaskStarted(const QString &taskId)
     DownloadTask *task = m_downloadManager->getTask(taskId);
     if (task) {
         ui->taskTable->updateTask(task);
+        LOG_INFO(QString("任务开始 - ID: %1").arg(taskId));
     }
 }
 
@@ -275,6 +292,7 @@ void MainWindow::onTaskPaused(const QString &taskId)
     DownloadTask *task = m_downloadManager->getTask(taskId);
     if (task) {
         ui->taskTable->updateTask(task);
+        LOG_INFO(QString("任务暂停 - ID: %1").arg(taskId));
     }
 }
 
@@ -283,6 +301,7 @@ void MainWindow::onTaskResumed(const QString &taskId)
     DownloadTask *task = m_downloadManager->getTask(taskId);
     if (task) {
         ui->taskTable->updateTask(task);
+        LOG_INFO(QString("任务恢复 - ID: %1").arg(taskId));
     }
 }
 
@@ -291,6 +310,7 @@ void MainWindow::onTaskCancelled(const QString &taskId)
     DownloadTask *task = m_downloadManager->getTask(taskId);
     if (task) {
         ui->taskTable->updateTask(task);
+        LOG_INFO(QString("任务取消 - ID: %1").arg(taskId));
     }
 }
 
@@ -299,6 +319,7 @@ void MainWindow::onTaskCompleted(const QString &taskId)
     DownloadTask *task = m_downloadManager->getTask(taskId);
     if (task) {
         ui->taskTable->updateTask(task);
+        LOG_INFO(QString("任务完成 - ID: %1").arg(taskId));
         showInfo(tr("下载完成：%1").arg(task->fileName()));
     }
 }
@@ -308,12 +329,14 @@ void MainWindow::onTaskFailed(const QString &taskId, const QString &error)
     DownloadTask *task = m_downloadManager->getTask(taskId);
     if (task) {
         ui->taskTable->updateTask(task);
+        LOG_WARNING(QString("任务失败 - ID: %1, 错误: %2").arg(taskId).arg(error));
         showError(tr("下载失败：%1 - %2").arg(task->fileName()).arg(error));
     }
 }
 
 void MainWindow::onAllTasksCompleted()
 {
+    LOG_INFO("所有下载任务已完成");
     showInfo(tr("所有下载任务已完成"));
 }
 
@@ -348,11 +371,19 @@ void MainWindow::updateStatusBar()
 
 void MainWindow::showError(const QString &message)
 {
+    LOG_ERROR(message);
     QMessageBox::critical(this, tr("错误"), message);
+}
+
+void MainWindow::showWarning(const QString &message)
+{
+    LOG_WARNING(message);
+    QMessageBox::warning(this, tr("警告"), message);
 }
 
 void MainWindow::showInfo(const QString &message)
 {
+    LOG_INFO(message);
     QMessageBox::information(this, tr("信息"), message);
 }
 
@@ -365,7 +396,7 @@ bool MainWindow::validateAuthFields()
     QString password = ui->passwordEdit->text().trimmed();
 
     if (username.isEmpty() || password.isEmpty()) {
-        QMessageBox::warning(this, tr("警告"), tr("用户名和密码不能为空"));
+        showWarning(tr("用户名和密码不能为空"));
         return false;
     }
 
@@ -391,6 +422,7 @@ QString MainWindow::formatBytes(qint64 bytes) const
 
 void MainWindow::fetchSmbFileList(const QString &url)
 {
+    LOG_INFO(QString("获取 SMB 文件列表: %1").arg(url));
     QString normalizedUrl = normalizeSmbUrl(url);
     ui->remoteFileTable->setRowCount(0);
 
@@ -466,12 +498,15 @@ void MainWindow::fetchSmbFileList(const QString &url)
     smb2_disconnect_share(smb2);
     smb2_destroy_url(smburl);
     smb2_destroy_context(smb2);
+    LOG_INFO("SMB 文件列表获取完成");
 }
 
 void MainWindow::onDownloadFileClicked(const QString &fileUrl)
 {
     if (!validateAuthFields())
         return;
+
+    LOG_INFO(QString("开始下载文件: %1").arg(fileUrl));
 
     QString savePath = ui->savePathEdit->text().trimmed();
     if (savePath.isEmpty())
@@ -490,6 +525,7 @@ void MainWindow::onDownloadFileClicked(const QString &fileUrl)
 void MainWindow::loadTasks()
 {
     // 从下载管理器获取所有已加载的任务并插入到表格中
+    LOG_INFO("加载任务到界面");
     QList<DownloadTask*> tasks = m_downloadManager->getAllTasks();
 
     ui->taskTable->setRowCount(0);
@@ -510,6 +546,7 @@ void MainWindow::onTaskProgress(const QString &taskId, qint64 bytesReceived, qin
 
 void MainWindow::createTrayMenu()
 {
+    LOG_INFO("创建托盘菜单");
     m_trayMenu = new QMenu(this);
     QAction *showAction = m_trayMenu->addAction(tr("显示窗口"));
     connect(showAction, &QAction::triggered, this, &QWidget::showNormal);
@@ -519,6 +556,7 @@ void MainWindow::createTrayMenu()
 
 void MainWindow::createTrayIcon()
 {
+    LOG_INFO("创建托盘图标");
     m_trayIcon = new QSystemTrayIcon(this);
     m_trayIcon->setIcon(windowIcon());
     m_trayIcon->setContextMenu(m_trayMenu);
@@ -528,6 +566,7 @@ void MainWindow::createTrayIcon()
 
 void MainWindow::onTrayIconActivated(QSystemTrayIcon::ActivationReason reason)
 {
+    LOG_INFO("托盘图标被激活");
     if (reason == QSystemTrayIcon::Trigger || reason == QSystemTrayIcon::DoubleClick) {
         if (isHidden()) {
             showNormal();
@@ -540,9 +579,11 @@ void MainWindow::onTrayIconActivated(QSystemTrayIcon::ActivationReason reason)
 void MainWindow::closeEvent(QCloseEvent *event)
 {
     if (m_trayIcon && m_trayIcon->isVisible()) {
+        LOG_INFO("窗口隐藏到托盘");
         hide();
         event->ignore();
     } else {
+        LOG_INFO("窗口关闭");
         QMainWindow::closeEvent(event);
     }
 }
