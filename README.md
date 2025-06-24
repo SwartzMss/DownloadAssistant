@@ -90,7 +90,7 @@ DownloadAssistant/
 
 ## 构建指南 / Build Instructions
 
-当前版本仅支持 Windows，并直接使用 Qt 的文件接口访问 UNC 路径，因此不再依赖 `libsmb2`。
+当前版本仅支持 Windows，并直接使用 Qt 的文件接口访问 UNC 路径，因此无需 `libsmb2` 库，相关文件已移除。
 
 确保安装 Qt 工具链后，在项目根目录执行：
 
