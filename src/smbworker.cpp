@@ -64,10 +64,15 @@ void SmbWorker::run()
         return;
     }
 
-    QString userStr = m_task->username();
-    QString domStr = m_task->domain();
-    if (domStr.isEmpty())
-        parseDomainUser(userStr, domStr, userStr);
+    QString userInput = m_task->username();
+    QString domainInput = m_task->domain();
+
+    // Extract domain part from username like "DOMAIN\\user"
+    QString parsedDomain, parsedUser;
+    parseDomainUser(userInput, parsedDomain, parsedUser);
+
+    QString userStr = parsedUser;
+    QString domStr = domainInput.isEmpty() ? parsedDomain : domainInput; // prefer explicit domain
 
     QByteArray user = userStr.toUtf8();
     QByteArray pass = m_task->password().toUtf8();

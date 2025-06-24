@@ -439,14 +439,24 @@ void MainWindow::fetchSmbFileList(const QString &url)
         return;
     }
 
-    QString username = ui->authCheckBox->isChecked() ? ui->usernameEdit->text() : QString();
-    QString password = ui->authCheckBox->isChecked() ? ui->passwordEdit->text() : QString();
-    QString domain = ui->authCheckBox->isChecked() ? ui->domainEdit->text() : QString();
-    if (domain.isEmpty())
-        parseDomainUser(username, domain, username);
-    if (!domain.isEmpty()) smb2_set_domain(smb2, domain.toUtf8().constData());
-    if (!username.isEmpty()) smb2_set_user(smb2, username.toUtf8().constData());
-    if (!password.isEmpty()) smb2_set_password(smb2, password.toUtf8().constData());
+    QString userInput = ui->authCheckBox->isChecked() ? ui->usernameEdit->text() : QString();
+    QString passInput = ui->authCheckBox->isChecked() ? ui->passwordEdit->text() : QString();
+    QString domainInput = ui->authCheckBox->isChecked() ? ui->domainEdit->text() : QString();
+
+    // Always parse possible "DOMAIN\\user" syntax from username
+    QString parsedDomain, parsedUser;
+    parseDomainUser(userInput, parsedDomain, parsedUser);
+
+    QString username = parsedUser;                          // username without domain
+    QString domain = domainInput.isEmpty() ? parsedDomain   // prefer explicit domain
+                                           : domainInput;
+
+    if (!domain.isEmpty())
+        smb2_set_domain(smb2, domain.toUtf8().constData());
+    if (!username.isEmpty())
+        smb2_set_user(smb2, username.toUtf8().constData());
+    if (!passInput.isEmpty())
+        smb2_set_password(smb2, passInput.toUtf8().constData());
 
     if (smb2_connect_share(smb2, smburl->server, smburl->share,
                            username.isEmpty() ? nullptr : username.toUtf8().constData()) < 0) {
@@ -512,13 +522,18 @@ void MainWindow::onDownloadFileClicked(const QString &fileUrl)
     if (savePath.isEmpty())
         savePath = m_downloadManager->getDefaultSavePath();
 
-    QString username = ui->authCheckBox->isChecked() ? ui->usernameEdit->text() : QString();
-    QString password = ui->authCheckBox->isChecked() ? ui->passwordEdit->text() : QString();
-    QString domain = ui->authCheckBox->isChecked() ? ui->domainEdit->text() : QString();
-    if (domain.isEmpty())
-        parseDomainUser(username, domain, username);
+    QString userInput = ui->authCheckBox->isChecked() ? ui->usernameEdit->text() : QString();
+    QString passInput = ui->authCheckBox->isChecked() ? ui->passwordEdit->text() : QString();
+    QString domainInput = ui->authCheckBox->isChecked() ? ui->domainEdit->text() : QString();
 
-    m_downloadManager->addTask(fileUrl, savePath, DownloadTask::SMB, username, password, domain);
+    // Separate domain from username input
+    QString parsedDomain, parsedUser;
+    parseDomainUser(userInput, parsedDomain, parsedUser);
+
+    QString username = parsedUser;
+    QString domain = domainInput.isEmpty() ? parsedDomain : domainInput;
+
+    m_downloadManager->addTask(fileUrl, savePath, DownloadTask::SMB, username, passInput, domain);
 }
 
 

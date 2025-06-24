@@ -77,10 +77,12 @@ QString DownloadManager::addTask(const QString &url,
     
     QString taskId = QUuid::createUuid().toString(QUuid::WithoutBraces);
     
-    QString user = username;
-    QString dom = domain;
-    if (dom.isEmpty())
-        parseDomainUser(username, dom, user);
+    // Always split possible "DOMAIN\\user" syntax
+    QString parsedDomain, parsedUser;
+    parseDomainUser(username, parsedDomain, parsedUser);
+
+    QString user = parsedUser;
+    QString dom = domain.isEmpty() ? parsedDomain : domain; // prefer explicit domain
 
     DownloadTask *task = new DownloadTask(this);
     task->setId(taskId);
