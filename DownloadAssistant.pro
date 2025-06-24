@@ -23,7 +23,6 @@ SOURCES += \
     src/smbdownloader.cpp \
     src/smbworker.cpp \
     src/logger.cpp \
-    src/remote_smbfile_dialog.cpp \
     src/tasktablewidget.cpp \
     src/smbutils.cpp
 
@@ -34,7 +33,6 @@ HEADERS += \
     src/smbdownloader.h \
     src/smbworker.h \
     src/logger.h \
-    src/remote_smbfile_dialog.h \
     src/tasktablewidget.h \
     src/smbutils.h
 
