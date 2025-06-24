@@ -3,7 +3,6 @@
 
 #include <QThread>
 #include <QString>
-#include <smb2/libsmb2.h>
 
 class DownloadTask;
 

@@ -1,7 +1,6 @@
 #include "downloadmanager.h"
 #include "downloadtask.h"
 #include "smbdownloader.h"
-#include "smbutils.h"
 #include <QStandardPaths>
 #include <QDir>
 #include <QDebug>
@@ -68,30 +67,17 @@ DownloadManager::~DownloadManager()
 
 QString DownloadManager::addTask(const QString &url,
                                  const QString &savePath,
-                                 DownloadTask::ProtocolType protocol,
-                                 const QString &username,
-                                 const QString &password,
-                                 const QString &domain)
+                                 DownloadTask::ProtocolType protocol)
 {
     LOG_INFO(QString("添加下载任务 - URL: %1, 协议: %2").arg(url).arg(static_cast<int>(protocol)));
     
     QString taskId = QUuid::createUuid().toString(QUuid::WithoutBraces);
     
-    // Always split possible "DOMAIN\\user" syntax
-    QString parsedDomain, parsedUser;
-    parseDomainUser(username, parsedDomain, parsedUser);
-
-    QString user = parsedUser;
-    QString dom = domain.isEmpty() ? parsedDomain : domain; // prefer explicit domain
-
     DownloadTask *task = new DownloadTask(this);
     task->setId(taskId);
     task->setUrl(url);
     task->setSavePath(savePath.isEmpty() ? m_defaultSavePath : savePath);
     task->setProtocol(protocol);
-    task->setUsername(user);
-    task->setPassword(password);
-    task->setDomain(dom);
     task->setStatus(DownloadTask::Pending);
     
     m_tasks[taskId] = task;

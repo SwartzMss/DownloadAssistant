@@ -19,10 +19,7 @@ public:
     // 任务管理
     QString addTask(const QString &url,
                     const QString &savePath = "",
-                    DownloadTask::ProtocolType protocol = DownloadTask::SMB,
-                    const QString &username = QString(),
-                    const QString &password = QString(),
-                    const QString &domain = QString());
+                    DownloadTask::ProtocolType protocol = DownloadTask::SMB);
     void removeTask(const QString &taskId);
     void removeCompletedTasks();
     

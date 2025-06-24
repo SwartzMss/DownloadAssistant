@@ -23,8 +23,7 @@ SOURCES += \
     src/smbdownloader.cpp \
     src/smbworker.cpp \
     src/logger.cpp \
-    src/tasktablewidget.cpp \
-    src/smbutils.cpp
+    src/tasktablewidget.cpp
 
 HEADERS += \
     src/mainwindow.h \
@@ -33,8 +32,7 @@ HEADERS += \
     src/smbdownloader.h \
     src/smbworker.h \
     src/logger.h \
-    src/tasktablewidget.h \
-    src/smbutils.h
+    src/tasktablewidget.h
 
 FORMS += \
     src/mainwindow.ui
@@ -50,14 +48,6 @@ else: unix:!android: target.path = /opt/$${TARGET}/bin
 win32 {
     LIBS += -lws2_32 -liphlpapi
     DEFINES += WIN32_LEAN_AND_MEAN
-    # libsmb2 is bundled in the repository under depend/libsmb2
-    INCLUDEPATH += $$PWD/depend/libsmb2/include
-    LIBS += -L$$PWD/depend/libsmb2/lib -lsmb2
-}
-
-unix {
-    INCLUDEPATH += $$PWD/depend/libsmb2/include
-    LIBS += -L$$PWD/depend/libsmb2/lib -lsmb2
 }
 
 # Release configuration
