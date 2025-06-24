@@ -72,6 +72,7 @@ private:
     void showError(const QString &message);
     QString formatBytes(qint64 bytes) const;
     void fetchSmbFileList(const QString &url);
+    bool validateAuthFields();
 
     void createTrayIcon();
     void createTrayMenu();

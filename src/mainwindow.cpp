@@ -137,6 +137,9 @@ void MainWindow::onConnectClicked()
         QMessageBox::warning(this, tr("警告"), tr("请输入 SMB 地址"));
         return;
     }
+    if (!validateAuthFields()) {
+        return;
+    }
     fetchSmbFileList(url);
 }
 
@@ -351,6 +354,22 @@ void MainWindow::showInfo(const QString &message)
     QMessageBox::information(this, tr("信息"), message);
 }
 
+bool MainWindow::validateAuthFields()
+{
+    if (!ui->authCheckBox->isChecked())
+        return true;
+
+    QString username = ui->usernameEdit->text().trimmed();
+    QString password = ui->passwordEdit->text().trimmed();
+
+    if (username.isEmpty() || password.isEmpty()) {
+        QMessageBox::warning(this, tr("警告"), tr("用户名和密码不能为空"));
+        return false;
+    }
+
+    return true;
+}
+
 QString MainWindow::formatBytes(qint64 bytes) const
 {
     const qint64 KB = 1024;
@@ -445,6 +464,9 @@ void MainWindow::fetchSmbFileList(const QString &url)
 
 void MainWindow::onDownloadFileClicked(const QString &fileUrl)
 {
+    if (!validateAuthFields())
+        return;
+
     QString savePath = ui->savePathEdit->text().trimmed();
     if (savePath.isEmpty())
         savePath = m_downloadManager->getDefaultSavePath();
