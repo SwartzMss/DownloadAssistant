@@ -6,6 +6,8 @@
 #include <QTimer>
 #include <QSystemTrayIcon>
 #include <QMenu>
+#include <QSettings>
+#include <QMap>
 #include "downloadmanager.h"
 #include "tasktablewidget.h"
 
@@ -46,6 +48,8 @@ private slots:
     void onUpdateTimer();
     void onTrayIconActivated(QSystemTrayIcon::ActivationReason reason);
     void onDownloadFileClicked(const QString &fileName);
+    void onAddBookmarkClicked();
+    void onBookmarkSelected(const QString &name);
 
 private:
     // UI 组件
@@ -57,11 +61,14 @@ private:
     QTimer *m_updateTimer;
     QSystemTrayIcon *m_trayIcon;
     QMenu *m_trayMenu;
+    QSettings *m_settings;
+    QMap<QString, QString> m_bookmarks;
     
     // 辅助方法
     void setupUI();
     void setupConnections();
     void loadTasks();
+    void loadBookmarks();
     void updateStatusBar();
     void onClearClicked();
     void onStartAllClicked();
