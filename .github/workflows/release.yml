@@ -41,11 +41,7 @@ jobs:
       shell: cmd
       run: |
         windeployqt --release --qmldir . release\DownloadAssistant.exe
-        
-    - name: Copy Azure Speech SDK DLLs
-      shell: cmd
-      run: |
-        xcopy /Y /E third_party\azure_speech_sdk\bin\*.dll release\
+
         
     - name: Compress Release
       shell: cmd
