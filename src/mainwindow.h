@@ -48,6 +48,7 @@ private slots:
     void onUpdateTimer();
     void onTrayIconActivated(QSystemTrayIcon::ActivationReason reason);
     void onDownloadFileClicked(const QString &fileName);
+    void onDownloadDirectoryClicked(const QString &dirUrl);
     void onAddBookmarkClicked();
     void onBookmarkSelected(const QString &name);
 
@@ -80,6 +81,7 @@ private:
     void showError(const QString &message);
     QString formatBytes(qint64 bytes) const;
     void fetchSmbFileList(const QString &url);
+    void downloadDirectoryRecursive(const QString &dirUrl, const QString &localPath);
 
     void createTrayIcon();
     void createTrayMenu();

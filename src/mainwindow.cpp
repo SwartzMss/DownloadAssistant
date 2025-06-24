@@ -459,13 +459,17 @@ void MainWindow::fetchSmbFileList(const QString &url)
         ui->remoteFileTable->setItem(row, 1, new QTableWidgetItem(isDir ? QString() : formatBytes(size)));
         ui->remoteFileTable->setItem(row, 2, new QTableWidgetItem(isDir ? tr("目录") : tr("文件")));
 
-        if (!isDir) {
-            QPushButton *btn = new QPushButton(tr("下载"));
-            ui->remoteFileTable->setCellWidget(row, 3, btn);
-            QString fullUrl = url;
-            if (!fullUrl.endsWith('/'))
-                fullUrl += '/';
-            fullUrl += name;
+        QPushButton *btn = new QPushButton(isDir ? tr("下载目录") : tr("下载"));
+        ui->remoteFileTable->setCellWidget(row, 3, btn);
+        QString fullUrl = url;
+        if (!fullUrl.endsWith('/'))
+            fullUrl += '/';
+        fullUrl += name;
+        if (isDir) {
+            connect(btn, &QPushButton::clicked, this, [this, fullUrl]() {
+                onDownloadDirectoryClicked(fullUrl);
+            });
+        } else {
             connect(btn, &QPushButton::clicked, this, [this, fullUrl]() {
                 onDownloadFileClicked(fullUrl);
             });
@@ -489,6 +493,54 @@ void MainWindow::onDownloadFileClicked(const QString &fileUrl)
     // 添加任务后立即启动下载，避免用户还需手动点击开始
     QString taskId = m_downloadManager->addTask(fileUrl, savePath, DownloadTask::SMB);
     m_downloadManager->startTask(taskId);
+}
+
+void MainWindow::onDownloadDirectoryClicked(const QString &dirUrl)
+{
+    LOG_INFO(QString("开始下载目录: %1").arg(dirUrl));
+
+    QString savePath = ui->savePathEdit->text().trimmed();
+    if (savePath.isEmpty())
+        savePath = m_downloadManager->getDefaultSavePath();
+
+    QString dirName = QUrl(dirUrl).fileName();
+    if (dirName.isEmpty()) {
+        QUrl temp(dirUrl);
+        QString path = temp.path();
+        if (path.endsWith('/'))
+            path.chop(1);
+        dirName = QFileInfo(path).fileName();
+    }
+
+    QString localPath = QDir(savePath).filePath(dirName);
+    downloadDirectoryRecursive(dirUrl, localPath);
+}
+
+void MainWindow::downloadDirectoryRecursive(const QString &dirUrl, const QString &localPath)
+{
+    QString uncPath = toUncPath(dirUrl);
+    QDir dir(uncPath);
+    if (!dir.exists())
+        return;
+
+    QDir().mkpath(localPath);
+
+    QFileInfoList list = dir.entryInfoList(QDir::AllEntries | QDir::NoDotAndDotDot);
+    for (const QFileInfo &info : list) {
+        QString name = info.fileName();
+        QString childUrl = dirUrl;
+        if (!childUrl.endsWith('/'))
+            childUrl += '/';
+        childUrl += name;
+
+        if (info.isDir()) {
+            QString subLocal = QDir(localPath).filePath(name);
+            downloadDirectoryRecursive(childUrl, subLocal);
+        } else {
+            QString taskId = m_downloadManager->addTask(childUrl, localPath, DownloadTask::SMB);
+            m_downloadManager->startTask(taskId);
+        }
+    }
 }
 
 
