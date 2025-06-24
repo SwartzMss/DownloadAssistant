@@ -1,4 +1,4 @@
-QT += core gui network
+QT += core gui
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
@@ -21,7 +21,6 @@ SOURCES += \
     src/downloadmanager.cpp \
     src/downloadtask.cpp \
     src/smbdownloader.cpp \
-    src/httpdownloader.cpp \
     src/smbworker.cpp \
     src/logger.cpp \
     src/remote_smbfile_dialog.cpp \
@@ -32,7 +31,6 @@ HEADERS += \
     src/downloadmanager.h \
     src/downloadtask.h \
     src/smbdownloader.h \
-    src/httpdownloader.h \
     src/smbworker.h \
     src/logger.h \
     src/remote_smbfile_dialog.h \

@@ -54,9 +54,6 @@ void DownloadTask::setUrl(const QString &url)
     // 根据 URL 协议自动检测协议类型
     if (url.startsWith("smb://", Qt::CaseInsensitive)) {
         setProtocol(SMB);
-    } else if (url.startsWith("http://", Qt::CaseInsensitive) || 
-               url.startsWith("https://", Qt::CaseInsensitive)) {
-        setProtocol(HTTP_HTTPS);
     }
 }
 
@@ -152,8 +149,6 @@ QString DownloadTask::protocolText() const
     switch (m_protocol) {
     case SMB:
         return QObject::tr("SMB");
-    case HTTP_HTTPS:
-        return QObject::tr("HTTP/HTTPS");
     default:
         return QObject::tr("未知");
     }

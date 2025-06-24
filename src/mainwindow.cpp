@@ -50,7 +50,6 @@ MainWindow::MainWindow(QWidget *parent)
     // 初始化协议选择下拉框
     ui->protocolComboBox->clear();
     ui->protocolComboBox->addItem(tr("SMB"), static_cast<int>(DownloadTask::SMB));
-    ui->protocolComboBox->addItem(tr("HTTP/HTTPS"), static_cast<int>(DownloadTask::HTTP_HTTPS));
     
     // 设置下拉框的显示项数，有助于稳定弹出行为
     ui->protocolComboBox->setMaxVisibleItems(5);
