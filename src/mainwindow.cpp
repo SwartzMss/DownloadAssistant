@@ -487,13 +487,18 @@ void MainWindow::onDownloadFileClicked(const QString &fileUrl)
     if (savePath.isEmpty())
         savePath = m_downloadManager->getDefaultSavePath();
 
-    QString username = ui->authCheckBox->isChecked() ? ui->usernameEdit->text() : QString();
-    QString password = ui->authCheckBox->isChecked() ? ui->passwordEdit->text() : QString();
-    QString domain = ui->authCheckBox->isChecked() ? ui->domainEdit->text() : QString();
-    if (domain.isEmpty())
-        parseDomainUser(username, domain, username);
+    QString userInput = ui->authCheckBox->isChecked() ? ui->usernameEdit->text() : QString();
+    QString passInput = ui->authCheckBox->isChecked() ? ui->passwordEdit->text() : QString();
+    QString domainInput = ui->authCheckBox->isChecked() ? ui->domainEdit->text() : QString();
 
-    m_downloadManager->addTask(fileUrl, savePath, DownloadTask::SMB, username, password, domain);
+    // Separate domain from username input
+    QString parsedDomain, parsedUser;
+    parseDomainUser(userInput, parsedDomain, parsedUser);
+
+    QString username = parsedUser;
+    QString domain = domainInput.isEmpty() ? parsedDomain : domainInput;
+
+    m_downloadManager->addTask(fileUrl, savePath, DownloadTask::SMB, username, passInput, domain);
 }
 
 
