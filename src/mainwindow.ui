@@ -164,7 +164,7 @@
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_2">
        <item>
-        <widget class="QTableWidget" name="taskTable">
+        <widget class="TaskTableWidget" name="taskTable">
          <property name="selectionBehavior">
           <enum>QAbstractItemView::SelectRows</enum>
          </property>
@@ -265,6 +265,13 @@
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>TaskTableWidget</class>
+   <extends>QTableWidget</extends>
+   <header>tasktablewidget.h</header>
+  </customwidget>
+ </customwidgets>
  <resources/>
  <connections/>
-</ui> 
+</ui>

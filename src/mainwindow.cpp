@@ -5,10 +5,8 @@
 #include <QMessageBox>
 #include <QFileDialog>
 #include <QStandardPaths>
-#include <QHeaderView>
 #include <QApplication>
 #include <QCheckBox>
-#include <QProgressBar>
 #include <QSystemTrayIcon>
 #include <QMenu>
 #include <QCloseEvent>
@@ -16,6 +14,7 @@
 #include <QSet>
 #include "logger.h"
 #include "remote_smbfile_dialog.h"
+#include "tasktablewidget.h"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -35,7 +34,7 @@ MainWindow::MainWindow(QWidget *parent)
     
     setupUI();
     setupConnections();
-    setupTable();
+    ui->taskTable->setupTable();
     
     // 设置默认保存路径
     ui->savePathEdit->setText(m_downloadManager->getDefaultSavePath());
@@ -102,6 +101,10 @@ void MainWindow::setupConnections()
     connect(ui->pauseAllButton, &QPushButton::clicked, this, &MainWindow::onPauseAllClicked);
     connect(ui->removeButton, &QPushButton::clicked, this, &MainWindow::onRemoveClicked);
     connect(ui->clearCompletedButton, &QPushButton::clicked, this, &MainWindow::onClearCompletedClicked);
+    connect(ui->taskTable, &TaskTableWidget::startTaskRequested, this, &MainWindow::onStartTaskClicked);
+    connect(ui->taskTable, &TaskTableWidget::pauseTaskRequested, this, &MainWindow::onPauseTaskClicked);
+    connect(ui->taskTable, &TaskTableWidget::resumeTaskRequested, this, &MainWindow::onResumeTaskClicked);
+    connect(ui->taskTable, &TaskTableWidget::cancelTaskRequested, this, &MainWindow::onCancelTaskClicked);
     connect(ui->browseSmbButton, &QPushButton::clicked, this, [this]() {
         QString currentUrl = ui->urlEdit->text();
         RemoteSmbFileDialog dlg(this);
@@ -130,37 +133,6 @@ void MainWindow::setupConnections()
     connect(m_downloadManager, &DownloadManager::taskProgress, this, &MainWindow::onTaskProgress);
 }
 
-void MainWindow::setupTable()
-{
-    // 设置表格属性
-    ui->taskTable->setColumnCount(8);
-    ui->taskTable->setHorizontalHeaderLabels({
-        tr("协议"),
-        tr("文件名"),
-        tr("状态"),
-        tr("进度"),
-        tr("速度"),
-        tr("大小"),
-        tr("剩余时间"),
-        tr("操作")
-    });
-    
-    // 设置表格样式
-    ui->taskTable->setAlternatingRowColors(true);
-    ui->taskTable->setSelectionBehavior(QAbstractItemView::SelectRows);
-    ui->taskTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
-    
-    // 设置列宽
-    ui->taskTable->horizontalHeader()->setStretchLastSection(false);
-    ui->taskTable->horizontalHeader()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
-    ui->taskTable->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Stretch);
-    ui->taskTable->horizontalHeader()->setSectionResizeMode(2, QHeaderView::ResizeToContents);
-    ui->taskTable->horizontalHeader()->setSectionResizeMode(3, QHeaderView::ResizeToContents);
-    ui->taskTable->horizontalHeader()->setSectionResizeMode(4, QHeaderView::ResizeToContents);
-    ui->taskTable->horizontalHeader()->setSectionResizeMode(5, QHeaderView::ResizeToContents);
-    ui->taskTable->horizontalHeader()->setSectionResizeMode(6, QHeaderView::ResizeToContents);
-    ui->taskTable->horizontalHeader()->setSectionResizeMode(7, QHeaderView::ResizeToContents);
-}
 
 void MainWindow::onAddTaskClicked()
 {
@@ -254,59 +226,39 @@ void MainWindow::onClearCompletedClicked()
     showInfo(tr("已清空已完成的任务"));
 }
 
-void MainWindow::onStartTaskClicked()
+void MainWindow::onStartTaskClicked(DownloadTask *task)
 {
-    QModelIndex currentIndex = ui->taskTable->currentIndex();
-    if (!currentIndex.isValid()) {
-        QMessageBox::warning(this, tr("警告"), tr("请选择要开始的任务"));
+    if (!task)
         return;
-    }
-    
-    QString taskId = m_taskModel->data(m_taskModel->index(currentIndex.row(), 0), Qt::UserRole).toString();
-    m_downloadManager->startTask(taskId);
+    m_downloadManager->startTask(task->id());
 }
 
-void MainWindow::onPauseTaskClicked()
+void MainWindow::onPauseTaskClicked(DownloadTask *task)
 {
-    QModelIndex currentIndex = ui->taskTable->currentIndex();
-    if (!currentIndex.isValid()) {
-        QMessageBox::warning(this, tr("警告"), tr("请选择要暂停的任务"));
+    if (!task)
         return;
-    }
-    
-    QString taskId = m_taskModel->data(m_taskModel->index(currentIndex.row(), 0), Qt::UserRole).toString();
-    m_downloadManager->pauseTask(taskId);
+    m_downloadManager->pauseTask(task->id());
 }
 
-void MainWindow::onResumeTaskClicked()
+void MainWindow::onResumeTaskClicked(DownloadTask *task)
 {
-    QModelIndex currentIndex = ui->taskTable->currentIndex();
-    if (!currentIndex.isValid()) {
-        QMessageBox::warning(this, tr("警告"), tr("请选择要恢复的任务"));
+    if (!task)
         return;
-    }
-    
-    QString taskId = m_taskModel->data(m_taskModel->index(currentIndex.row(), 0), Qt::UserRole).toString();
-    m_downloadManager->resumeTask(taskId);
+    m_downloadManager->resumeTask(task->id());
 }
 
-void MainWindow::onCancelTaskClicked()
+void MainWindow::onCancelTaskClicked(DownloadTask *task)
 {
-    QModelIndex currentIndex = ui->taskTable->currentIndex();
-    if (!currentIndex.isValid()) {
-        QMessageBox::warning(this, tr("警告"), tr("请选择要取消的任务"));
+    if (!task)
         return;
-    }
-    
-    QString taskId = m_taskModel->data(m_taskModel->index(currentIndex.row(), 0), Qt::UserRole).toString();
-    m_downloadManager->cancelTask(taskId);
+    m_downloadManager->cancelTask(task->id());
 }
 
 void MainWindow::onTaskAdded(const QString &taskId)
 {
     DownloadTask *task = m_downloadManager->getTask(taskId);
     if (task) {
-        addTableRow(task);
+        ui->taskTable->addTask(task);
         updateStatusBar();
     }
 }
@@ -319,7 +271,7 @@ void MainWindow::onTaskRemoved(const QString &taskId)
         if (item) {
             DownloadTask *task = static_cast<DownloadTask*>(item->data(Qt::UserRole).value<void*>());
             if (task && task->id() == taskId) {
-                removeTableRow(task);
+                ui->taskTable->removeTask(task);
                 break;
             }
         }
@@ -331,10 +283,7 @@ void MainWindow::onTaskStarted(const QString &taskId)
 {
     DownloadTask *task = m_downloadManager->getTask(taskId);
     if (task) {
-        int row = findTableRow(task);
-        if (row >= 0) {
-            updateTableRow(row, task);
-        }
+        ui->taskTable->updateTask(task);
     }
 }
 
@@ -342,10 +291,7 @@ void MainWindow::onTaskPaused(const QString &taskId)
 {
     DownloadTask *task = m_downloadManager->getTask(taskId);
     if (task) {
-        int row = findTableRow(task);
-        if (row >= 0) {
-            updateTableRow(row, task);
-        }
+        ui->taskTable->updateTask(task);
     }
 }
 
@@ -353,10 +299,7 @@ void MainWindow::onTaskResumed(const QString &taskId)
 {
     DownloadTask *task = m_downloadManager->getTask(taskId);
     if (task) {
-        int row = findTableRow(task);
-        if (row >= 0) {
-            updateTableRow(row, task);
-        }
+        ui->taskTable->updateTask(task);
     }
 }
 
@@ -364,10 +307,7 @@ void MainWindow::onTaskCancelled(const QString &taskId)
 {
     DownloadTask *task = m_downloadManager->getTask(taskId);
     if (task) {
-        int row = findTableRow(task);
-        if (row >= 0) {
-            updateTableRow(row, task);
-        }
+        ui->taskTable->updateTask(task);
     }
 }
 
@@ -375,10 +315,7 @@ void MainWindow::onTaskCompleted(const QString &taskId)
 {
     DownloadTask *task = m_downloadManager->getTask(taskId);
     if (task) {
-        int row = findTableRow(task);
-        if (row >= 0) {
-            updateTableRow(row, task);
-        }
+        ui->taskTable->updateTask(task);
         showInfo(tr("下载完成：%1").arg(task->fileName()));
     }
 }
@@ -387,10 +324,7 @@ void MainWindow::onTaskFailed(const QString &taskId, const QString &error)
 {
     DownloadTask *task = m_downloadManager->getTask(taskId);
     if (task) {
-        int row = findTableRow(task);
-        if (row >= 0) {
-            updateTableRow(row, task);
-        }
+        ui->taskTable->updateTask(task);
         showError(tr("下载失败：%1 - %2").arg(task->fileName()).arg(error));
     }
 }
@@ -408,184 +342,12 @@ void MainWindow::onUpdateTimer()
         if (item) {
             DownloadTask *task = static_cast<DownloadTask*>(item->data(Qt::UserRole).value<void*>());
             if (task) {
-                updateTableRow(row, task);
+                ui->taskTable->updateTask(task);
             }
         }
     }
 }
 
-void MainWindow::updateTableRow(int row, DownloadTask *task)
-{
-    if (!task || row < 0 || row >= ui->taskTable->rowCount()) {
-        return;
-    }
-    
-    // 协议
-    ui->taskTable->item(row, 0)->setText(task->protocolText());
-    
-    // 文件名
-    ui->taskTable->item(row, 1)->setText(task->fileName());
-    
-    // 状态
-    ui->taskTable->item(row, 2)->setText(task->statusText());
-    
-    // 进度
-    QProgressBar *progressBar = qobject_cast<QProgressBar*>(ui->taskTable->cellWidget(row, 3));
-    if (progressBar) {
-        progressBar->setValue(static_cast<int>(task->progress()));
-    }
-    
-    // 速度
-    ui->taskTable->item(row, 4)->setText(task->speedText());
-    
-    // 大小
-    QString sizeText = formatBytes(task->downloadedSize());
-    if (task->fileSize() > 0) {
-        sizeText += " / " + formatBytes(task->fileSize());
-    }
-    ui->taskTable->item(row, 5)->setText(sizeText);
-    
-    // 剩余时间
-    ui->taskTable->item(row, 6)->setText(task->timeRemainingText());
-    
-    // 操作按钮
-    updateOperationButtons(row, task);
-}
-
-void MainWindow::addTableRow(DownloadTask *task)
-{
-    int row = ui->taskTable->rowCount();
-    ui->taskTable->insertRow(row);
-    
-    // 协议
-    ui->taskTable->setItem(row, 0, new QTableWidgetItem(task->protocolText()));
-    
-    // 文件名
-    QTableWidgetItem *fileNameItem = new QTableWidgetItem(task->fileName());
-    fileNameItem->setData(Qt::UserRole, QVariant::fromValue(static_cast<void*>(task)));
-    ui->taskTable->setItem(row, 1, fileNameItem);
-    
-    // 状态
-    ui->taskTable->setItem(row, 2, new QTableWidgetItem(task->statusText()));
-    
-    // 进度条
-    QProgressBar *progressBar = new QProgressBar();
-    progressBar->setRange(0, 100);
-    progressBar->setValue(0);
-    ui->taskTable->setCellWidget(row, 3, progressBar);
-    
-    // 速度
-    ui->taskTable->setItem(row, 4, new QTableWidgetItem(task->speedText()));
-    
-    // 大小
-    ui->taskTable->setItem(row, 5, new QTableWidgetItem(formatBytes(task->downloadedSize())));
-    
-    // 剩余时间
-    ui->taskTable->setItem(row, 6, new QTableWidgetItem(task->timeRemainingText()));
-    
-    // 操作按钮
-    createOperationButtons(row, task);
-    
-    updateTableRow(row, task);
-}
-
-void MainWindow::removeTableRow(DownloadTask *task)
-{
-    int row = findTableRow(task);
-    if (row >= 0) {
-        ui->taskTable->removeRow(row);
-    }
-}
-
-int MainWindow::findTableRow(DownloadTask *task)
-{
-    for (int row = 0; row < ui->taskTable->rowCount(); ++row) {
-        QTableWidgetItem *item = ui->taskTable->item(row, 0);
-        if (item) {
-            DownloadTask *rowTask = static_cast<DownloadTask*>(item->data(Qt::UserRole).value<void*>());
-            if (rowTask == task) {
-                return row;
-            }
-        }
-    }
-    return -1;
-}
-
-void MainWindow::createOperationButtons(int row, DownloadTask *task)
-{
-    QWidget *widget = new QWidget();
-    QHBoxLayout *layout = new QHBoxLayout(widget);
-    layout->setContentsMargins(2, 2, 2, 2);
-    layout->setSpacing(2);
-    
-    QPushButton *startButton = new QPushButton(tr("开始"));
-    QPushButton *pauseButton = new QPushButton(tr("暂停"));
-    QPushButton *resumeButton = new QPushButton(tr("继续"));
-    QPushButton *cancelButton = new QPushButton(tr("取消"));
-    
-    startButton->setProperty("row", row);
-    pauseButton->setProperty("row", row);
-    resumeButton->setProperty("row", row);
-    cancelButton->setProperty("row", row);
-    
-    connect(startButton, &QPushButton::clicked, this, &MainWindow::onStartTaskClicked);
-    connect(pauseButton, &QPushButton::clicked, this, &MainWindow::onPauseTaskClicked);
-    connect(resumeButton, &QPushButton::clicked, this, &MainWindow::onResumeTaskClicked);
-    connect(cancelButton, &QPushButton::clicked, this, &MainWindow::onCancelTaskClicked);
-    
-    layout->addWidget(startButton);
-    layout->addWidget(pauseButton);
-    layout->addWidget(resumeButton);
-    layout->addWidget(cancelButton);
-    
-    ui->taskTable->setCellWidget(row, 7, widget);
-    
-    updateOperationButtons(row, task);
-}
-
-void MainWindow::updateOperationButtons(int row, DownloadTask *task)
-{
-    QWidget *widget = ui->taskTable->cellWidget(row, 7);
-    if (!widget) return;
-    
-    QList<QPushButton*> buttons = widget->findChildren<QPushButton*>();
-    if (buttons.size() < 4) return;
-    
-    QPushButton *startButton = buttons[0];
-    QPushButton *pauseButton = buttons[1];
-    QPushButton *resumeButton = buttons[2];
-    QPushButton *cancelButton = buttons[3];
-    
-    // 根据任务状态设置按钮可见性
-    switch (task->status()) {
-    case DownloadTask::Pending:
-        startButton->setVisible(true);
-        pauseButton->setVisible(false);
-        resumeButton->setVisible(false);
-        cancelButton->setVisible(true);
-        break;
-    case DownloadTask::Downloading:
-        startButton->setVisible(false);
-        pauseButton->setVisible(true);
-        resumeButton->setVisible(false);
-        cancelButton->setVisible(true);
-        break;
-    case DownloadTask::Paused:
-        startButton->setVisible(false);
-        pauseButton->setVisible(false);
-        resumeButton->setVisible(true);
-        cancelButton->setVisible(true);
-        break;
-    case DownloadTask::Completed:
-    case DownloadTask::Failed:
-    case DownloadTask::Cancelled:
-        startButton->setVisible(false);
-        pauseButton->setVisible(false);
-        resumeButton->setVisible(false);
-        cancelButton->setVisible(false);
-        break;
-    }
-}
 
 void MainWindow::updateStatusBar()
 {
@@ -636,7 +398,7 @@ void MainWindow::loadTasks()
 
     ui->taskTable->setRowCount(0);
     for (DownloadTask *task : tasks) {
-        addTableRow(task);
+        ui->taskTable->addTask(task);
     }
 
     updateStatusBar();
@@ -646,10 +408,7 @@ void MainWindow::onTaskProgress(const QString &taskId, qint64 bytesReceived, qin
 {
     DownloadTask *task = m_downloadManager->getTask(taskId);
     if (task) {
-        int row = findTableRow(task);
-        if (row >= 0) {
-            updateTableRow(row, task);
-        }
+        ui->taskTable->updateTask(task);
     }
 }
 

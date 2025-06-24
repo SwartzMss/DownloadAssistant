@@ -7,6 +7,7 @@
 #include <QSystemTrayIcon>
 #include <QMenu>
 #include "downloadmanager.h"
+#include "tasktablewidget.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -24,10 +25,10 @@ private slots:
     // UI 事件处理
     void onAddTaskClicked();
     void onBrowseClicked();
-    void onStartTaskClicked();
-    void onPauseTaskClicked();
-    void onResumeTaskClicked();
-    void onCancelTaskClicked();
+    void onStartTaskClicked(DownloadTask *task);
+    void onPauseTaskClicked(DownloadTask *task);
+    void onResumeTaskClicked(DownloadTask *task);
+    void onCancelTaskClicked(DownloadTask *task);
     void onClearCompletedClicked();
     
     // 下载管理器事件
@@ -59,15 +60,8 @@ private:
     // 辅助方法
     void setupUI();
     void setupConnections();
-    void setupTable();
     void loadTasks();
     void updateStatusBar();
-    void updateTableRow(int row, DownloadTask *task);
-    void addTableRow(DownloadTask *task);
-    void removeTableRow(DownloadTask *task);
-    int findTableRow(DownloadTask *task);
-    void createOperationButtons(int row, DownloadTask *task);
-    void updateOperationButtons(int row, DownloadTask *task);
     void onClearClicked();
     void onStartAllClicked();
     void onPauseAllClicked();
