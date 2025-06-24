@@ -103,6 +103,7 @@ LIBS += -L$$PWD/depend/libsmb2/lib -lsmb2
 
 如需使用其他版本的 libsmb2，也可通过 [vcpkg](https://github.com/microsoft/vcpkg) 安装并修改上述路径。
 
+
 ## 贡献指南
 
 欢迎提交 Issue 和 Pull Request！

@@ -4,9 +4,17 @@
 #include "logger.h"
 #include <QSharedMemory>
 #include <QMessageBox>
+#include <winsock2.h>
 
 int main(int argc, char *argv[])
 {
+    WSADATA wsaData;
+    int wsaInit = WSAStartup(MAKEWORD(2, 2), &wsaData);
+    if (wsaInit != 0) {
+        QMessageBox::critical(nullptr, "Error",
+                              QString("WSAStartup failed: %1").arg(wsaInit));
+        return 1;
+    }
     QApplication a(argc, argv);
     
     QSharedMemory sharedMemory("DownloadAssistantSingleInstanceKey");
@@ -31,6 +39,10 @@ int main(int argc, char *argv[])
     w.show();
     
     Logger::instance()->info("主窗口已显示");
-    
-    return a.exec();
-} 
+
+    int ret = a.exec();
+
+    WSACleanup();
+
+    return ret;
+}
