@@ -7,11 +7,16 @@
 #include <QUuid>
 #include <QCoreApplication>
 #include "logger.h"
+#include <QFile>
+#include <QTextStream>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QJsonArray>
 
 DownloadManager::DownloadManager(QObject *parent)
     : QObject(parent)
     , m_smbDownloader(new SmbDownloader(this))
-    , m_settings(new QSettings(QCoreApplication::applicationDirPath() + "/config.ini", QSettings::IniFormat, this))
+    , m_configPath(QCoreApplication::applicationDirPath() + "/config.json")
     , m_maxConcurrentDownloads(3)
     , m_activeDownloadCount(0)
 {
@@ -23,9 +28,8 @@ DownloadManager::DownloadManager(QObject *parent)
         m_defaultSavePath = QDir::homePath() + "/Downloads";
     }
     
-    // 从设置中加载配置
-    m_defaultSavePath = m_settings->value("defaultSavePath", m_defaultSavePath).toString();
-    m_maxConcurrentDownloads = m_settings->value("maxConcurrentDownloads", 3).toInt();
+    // 从配置文件中加载配置
+    loadFromJson();
     
     LOG_INFO(QString("默认保存路径: %1").arg(m_defaultSavePath));
     LOG_INFO(QString("最大并发下载数: %1").arg(m_maxConcurrentDownloads));
@@ -66,10 +70,9 @@ DownloadManager::~DownloadManager()
 }
 
 QString DownloadManager::addTask(const QString &url,
-                                 const QString &savePath,
-                                 DownloadTask::ProtocolType protocol)
+                                 const QString &savePath)
 {
-    LOG_INFO(QString("添加下载任务 - URL: %1, 协议: %2").arg(url).arg(static_cast<int>(protocol)));
+    LOG_INFO(QString("添加下载任务 - URL: %1").arg(url));
     
     QString taskId = QUuid::createUuid().toString(QUuid::WithoutBraces);
     
@@ -77,7 +80,6 @@ QString DownloadManager::addTask(const QString &url,
     task->setId(taskId);
     task->setUrl(url);
     task->setSavePath(savePath.isEmpty() ? m_defaultSavePath : savePath);
-    task->setProtocol(protocol);
     task->setStatus(DownloadTask::Pending);
     
     m_tasks[taskId] = task;
@@ -119,7 +121,7 @@ void DownloadManager::removeTask(const QString &taskId)
     }
     
     LOG_INFO(QString("任务已移除 - ID: %1").arg(taskId));
-    saveTasks();
+    emit taskRemoved(taskId);
 }
 
 void DownloadManager::removeCompletedTasks()
@@ -136,8 +138,12 @@ void DownloadManager::removeCompletedTasks()
     }
     
     for (DownloadTask *task : completedTasks) {
-        removeTask(task->id());
+        m_tasks.remove(task->id());
+        task->deleteLater();
+        LOG_INFO(QString("任务已移除 - ID: %1").arg(task->id()));
+        emit taskRemoved(task->id());
     }
+    saveTasks();
 }
 
 void DownloadManager::startTask(const QString &taskId)
@@ -167,11 +173,7 @@ void DownloadManager::startTask(const QString &taskId)
     LOG_INFO(QString("任务开始下载 - ID: %1, 当前活跃下载数: %2").arg(taskId).arg(m_activeDownloadCount));
     
     // 根据协议类型选择下载器
-    if (task->protocol() == DownloadTask::SMB) {
-        m_smbDownloader->startDownload(task);
-    } else {
-        LOG_WARNING(QString("不支持的协议类型 - ID: %1, 协议: %2").arg(taskId).arg(static_cast<int>(task->protocol())));
-    }
+    m_smbDownloader->startDownload(task);
 }
 
 void DownloadManager::pauseTask(const QString &taskId)
@@ -194,9 +196,7 @@ void DownloadManager::pauseTask(const QString &taskId)
     
     LOG_INFO(QString("任务已暂停 - ID: %1, 当前活跃下载数: %2").arg(taskId).arg(m_activeDownloadCount));
     
-    if (task->protocol() == DownloadTask::SMB) {
-        m_smbDownloader->pauseDownload(task);
-    }
+    m_smbDownloader->pauseDownload(task);
     
     processNextTask();
 }
@@ -227,9 +227,7 @@ void DownloadManager::resumeTask(const QString &taskId)
     
     LOG_INFO(QString("任务恢复下载 - ID: %1, 当前活跃下载数: %2").arg(taskId).arg(m_activeDownloadCount));
     
-    if (task->protocol() == DownloadTask::SMB) {
-        m_smbDownloader->resumeDownload(task);
-    }
+    m_smbDownloader->resumeDownload(task);
 }
 
 void DownloadManager::cancelTask(const QString &taskId)
@@ -250,9 +248,7 @@ void DownloadManager::cancelTask(const QString &taskId)
     
     LOG_INFO(QString("任务已取消 - ID: %1, 当前活跃下载数: %2").arg(taskId).arg(m_activeDownloadCount));
     
-    if (task->protocol() == DownloadTask::SMB) {
-        m_smbDownloader->cancelDownload(task);
-    }
+    m_smbDownloader->cancelDownload(task);
     
     processNextTask();
 }
@@ -344,7 +340,7 @@ QString DownloadManager::getDefaultSavePath() const
 void DownloadManager::setDefaultSavePath(const QString &path)
 {
     m_defaultSavePath = path;
-    m_settings->setValue("defaultSavePath", path);
+    saveTasks();
 }
 
 int DownloadManager::getMaxConcurrentDownloads() const
@@ -355,78 +351,92 @@ int DownloadManager::getMaxConcurrentDownloads() const
 void DownloadManager::setMaxConcurrentDownloads(int max)
 {
     m_maxConcurrentDownloads = max;
-    m_settings->setValue("maxConcurrentDownloads", max);
+    saveTasks();
 }
 
 void DownloadManager::saveTasks()
 {
     LOG_INFO("保存任务列表");
     
-    m_settings->beginGroup("Tasks");
-    m_settings->remove(""); // 清除旧的任务数据
+    QJsonObject json;
+    QJsonArray tasksArray;
     
-    int index = 0;
     for (DownloadTask *task : m_tasks) {
-        QString prefix = QString("Task%1/").arg(index++);
-        m_settings->setValue(prefix + "id", task->id());
-        m_settings->setValue(prefix + "url", task->url());
-        m_settings->setValue(prefix + "savePath", task->savePath());
-        m_settings->setValue(prefix + "fileName", task->fileName());
-        m_settings->setValue(prefix + "protocol", static_cast<int>(task->protocol()));
-        m_settings->setValue(prefix + "status", static_cast<int>(task->status()));
-        m_settings->setValue(prefix + "downloadedSize", task->downloadedSize());
-        m_settings->setValue(prefix + "totalSize", task->totalSize());
-        m_settings->setValue(prefix + "supportsResume", task->supportsResume());
+        QJsonObject taskObject;
+        taskObject["id"] = task->id();
+        taskObject["url"] = task->url();
+        taskObject["savePath"] = task->savePath();
+        taskObject["fileName"] = task->fileName();
+        taskObject["status"] = static_cast<int>(task->status());
+        taskObject["downloadedSize"] = task->downloadedSize();
+        taskObject["totalSize"] = task->totalSize();
+        taskObject["supportsResume"] = task->supportsResume();
+        tasksArray.append(taskObject);
     }
     
-    m_settings->setValue("count", index);
-    m_settings->endGroup();
+    json["tasks"] = tasksArray;
+    json["defaultSavePath"] = m_defaultSavePath;
+    json["maxConcurrentDownloads"] = m_maxConcurrentDownloads;
     
-    LOG_INFO(QString("已保存 %1 个任务").arg(index));
+    QFile file(m_configPath);
+    if (file.open(QIODevice::WriteOnly)) {
+        QTextStream stream(&file);
+        stream << QJsonDocument(json).toJson();
+        file.close();
+    }
+    
+    LOG_INFO(QString("已保存 %1 个任务").arg(m_tasks.size()));
 }
 
 void DownloadManager::loadTasks()
 {
     LOG_INFO("加载任务列表");
-    
-    m_settings->beginGroup("Tasks");
-    int count = m_settings->value("count", 0).toInt();
-    
-    for (int i = 0; i < count; ++i) {
-        QString prefix = QString("Task%1/").arg(i);
-        
-        QString id = m_settings->value(prefix + "id").toString();
-        QString url = m_settings->value(prefix + "url").toString();
-        QString savePath = m_settings->value(prefix + "savePath").toString();
-        QString fileName = m_settings->value(prefix + "fileName").toString();
-        DownloadTask::ProtocolType protocol = static_cast<DownloadTask::ProtocolType>(
-            m_settings->value(prefix + "protocol", 0).toInt());
-        DownloadTask::Status status = static_cast<DownloadTask::Status>(
-            m_settings->value(prefix + "status", 0).toInt());
-        qint64 downloadedSize = m_settings->value(prefix + "downloadedSize", 0).toLongLong();
-        qint64 totalSize = m_settings->value(prefix + "totalSize", 0).toLongLong();
-        bool supportsResume = m_settings->value(prefix + "supportsResume", false).toBool();
-        
-        // 创建任务对象
-        DownloadTask *task = new DownloadTask(this);
-        task->setId(id);
-        task->setUrl(url);
-        task->setSavePath(savePath);
-        task->setFileName(fileName);
-        task->setProtocol(protocol);
-        task->setStatus(status);
-        task->setDownloadedSize(downloadedSize);
-        task->setTotalSize(totalSize);
-        task->setSupportsResume(supportsResume);
-        
-        m_tasks[id] = task;
-        
-        LOG_INFO(QString("加载任务 - ID: %1, URL: %2").arg(id).arg(url));
+
+    // 清空旧任务对象，防止重复加载
+    for (auto task : m_tasks) {
+        task->deleteLater();
     }
-    
-    m_settings->endGroup();
-    
-    LOG_INFO(QString("已加载 %1 个任务").arg(count));
+    m_tasks.clear();
+
+    QFile file(m_configPath);
+    if (file.open(QIODevice::ReadOnly)) {
+        QTextStream stream(&file);
+        QString jsonString = stream.readAll();
+        file.close();
+        QJsonDocument jsonDoc = QJsonDocument::fromJson(jsonString.toUtf8());
+        QJsonObject json = jsonDoc.object();
+        QJsonArray tasksArray = json["tasks"].toArray();
+        m_defaultSavePath = json["defaultSavePath"].toString();
+        m_maxConcurrentDownloads = json["maxConcurrentDownloads"].toInt();
+        for (const QJsonValue &value : tasksArray) {
+            QJsonObject taskObject = value.toObject();
+            QString id = taskObject["id"].toString();
+            QString url = taskObject["url"].toString();
+            QString savePath = taskObject["savePath"].toString();
+            QString fileName = taskObject["fileName"].toString();
+            DownloadTask::Status status = static_cast<DownloadTask::Status>(taskObject["status"].toInt());
+            qint64 downloadedSize = taskObject["downloadedSize"].toVariant().toLongLong();
+            qint64 totalSize = taskObject["totalSize"].toVariant().toLongLong();
+            bool supportsResume = taskObject["supportsResume"].toBool();
+            // 创建任务对象
+            DownloadTask *task = new DownloadTask(this);
+            task->setId(id);
+            task->setUrl(url);
+            task->setSavePath(savePath);
+            task->setFileName(fileName);
+            // 状态修正：如果是 Downloading 或 Queued，重启后恢复为 Pending
+            if (status == DownloadTask::Downloading || status == DownloadTask::Queued) {
+                status = DownloadTask::Pending;
+            }
+            task->setStatus(status);
+            task->setDownloadedSize(downloadedSize);
+            task->setTotalSize(totalSize);
+            task->setSupportsResume(supportsResume);
+            m_tasks[id] = task;
+            LOG_INFO(QString("加载任务 - ID: %1, URL: %2").arg(id).arg(url));
+        }
+        LOG_INFO(QString("已加载 %1 个任务").arg(m_tasks.size()));
+    }
 }
 
 void DownloadManager::onTaskStatusChanged(DownloadTask::Status status)
@@ -520,5 +530,13 @@ void DownloadManager::updateActiveDownloadCount()
             m_activeDownloadCount++;
         }
     }
+}
+
+void DownloadManager::loadFromJson() {
+    loadTasks();
+}
+
+void DownloadManager::saveToJson() {
+    saveTasks();
 }
 

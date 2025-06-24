@@ -22,14 +22,8 @@ public:
     };
     Q_ENUM(Status)
 
-    enum ProtocolType {
-        SMB            // SMB 协议
-    };
-    Q_ENUM(ProtocolType)
-
     explicit DownloadTask(QObject *parent = nullptr);
     explicit DownloadTask(const QString &url, const QString &savePath, QObject *parent = nullptr);
-    explicit DownloadTask(const QString &url, const QString &savePath, ProtocolType protocol, QObject *parent = nullptr);
     ~DownloadTask();
     
     // 基本属性
@@ -44,10 +38,6 @@ public:
     
     QString fileName() const { return m_fileName; }
     void setFileName(const QString &name);
-    
-    ProtocolType protocol() const { return m_protocol; }
-    void setProtocol(ProtocolType protocol);
-
     
     // 状态和进度
     Status status() const { return m_status; }
@@ -79,7 +69,6 @@ public:
     void setEndTime(const QDateTime &time) { m_endTime = time; }
     
     // 文本表示
-    QString protocolText() const;
     QString statusText() const;
     QString speedText() const;
     QString timeRemainingText() const;
@@ -98,7 +87,6 @@ private:
     QString m_url;
     QString m_savePath;
     QString m_fileName;
-    ProtocolType m_protocol;
     Status m_status;
     double m_progress;
     qint64 m_downloadedSize;

@@ -6,6 +6,7 @@
 #include <QFileInfo>
 #include <QThread>
 #include <QDebug>
+#include "logger.h"
 
 static QString toUncPath(QString path)
 {
@@ -71,21 +72,27 @@ void SmbWorker::run()
     m_offset = file.size();
 
     QString unc = toUncPath(m_task->url());
+    LOG_INFO(QString("SmbWorker 尝试打开远程文件: %1").arg(unc));
     QFile remoteFile(unc);
+    LOG_INFO("SmbWorker: remoteFile.open() 前");
     if (!remoteFile.open(QIODevice::ReadOnly)) {
+        LOG_ERROR(QString("SmbWorker 打开失败: %1").arg(remoteFile.errorString()));
         file.close();
-        emit finished(false, QObject::tr("无法打开远程文件"));
+        emit finished(false, QObject::tr("无法打开远程文件: %1").arg(remoteFile.errorString()));
         return;
     }
+    LOG_INFO("SmbWorker: remoteFile.open() 成功");
 
     if (m_offset > 0 && !remoteFile.seek(m_offset)) {
         remoteFile.close();
         file.close();
+        LOG_ERROR("SmbWorker: remoteFile.seek() 失败");
         emit finished(false, QObject::tr("无法定位远程文件"));
         return;
     }
 
     qint64 total = remoteFile.size();
+    LOG_INFO(QString("SmbWorker: remoteFile.size() = %1").arg(total));
     emit progress(m_offset, total);
 
     const int bufSize = 4096;
@@ -97,11 +104,13 @@ void SmbWorker::run()
             msleep(100);
             continue;
         }
-
+        LOG_INFO("SmbWorker: 读取数据前");
         qint64 n = remoteFile.read(buf, bufSize);
+        LOG_INFO(QString("SmbWorker: 读取数据 n = %1").arg(n));
         if (n < 0) {
             remoteFile.close();
             file.close();
+            LOG_ERROR(QString("SmbWorker: 读取数据失败: %1").arg(remoteFile.errorString()));
             emit finished(false, remoteFile.errorString());
             return;
         }
@@ -110,6 +119,7 @@ void SmbWorker::run()
         if (file.write(buf, n) != n) {
             remoteFile.close();
             file.close();
+            LOG_ERROR("SmbWorker: 写入文件失败");
             emit finished(false, QObject::tr("写入文件失败"));
             return;
         }

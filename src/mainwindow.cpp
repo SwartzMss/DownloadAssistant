@@ -19,6 +19,7 @@
 #include <QTableWidgetItem>
 #include <QHeaderView>
 #include <QUrl>
+#include <QInputDialog>
 
 static QString toUncPath(QString path)
 {
@@ -54,7 +55,6 @@ MainWindow::MainWindow(QWidget *parent)
     
     setupUI();
     setupConnections();
-    ui->taskTable->setupTable();
     
     // 设置默认保存路径
     ui->savePathEdit->setText(m_downloadManager->getDefaultSavePath());
@@ -64,12 +64,9 @@ MainWindow::MainWindow(QWidget *parent)
     connect(m_updateTimer, &QTimer::timeout, this, &MainWindow::onUpdateTimer);
     m_updateTimer->start();
     
-    // 加载已保存的任务
-    updateStatusBar();
-
-    // 加载书签和任务
-    loadBookmarks();
+    // 加载已保存的任务并刷新表格
     loadTasks();
+    updateStatusBar();
 
     // 设置应用程序和窗口图标
     setWindowIcon(QIcon(":/images/icon.png"));
@@ -99,30 +96,63 @@ void MainWindow::setupUI()
     // 设置状态栏
     statusBar()->showMessage(tr("就绪"));
 
-    ui->remoteFileTable->setColumnCount(4);
-    ui->remoteFileTable->setHorizontalHeaderLabels({tr("名称"), tr("大小"), tr("类型"), tr("操作")});
-    // 允许用户拖动列宽，默认根据内容调整初始宽度
-    for (int i = 0; i < 4; ++i)
-        ui->remoteFileTable->horizontalHeader()->setSectionResizeMode(i, QHeaderView::Interactive);
-    ui->remoteFileTable->horizontalHeader()->setStretchLastSection(true);
+    // 初始化已完成任务表格
+    ui->completedTable->setColumnCount(3);
+    ui->completedTable->setHorizontalHeaderLabels({tr("文件名"), tr("文件路径"), tr("大小")});
+    ui->completedTable->setSelectionBehavior(QAbstractItemView::SelectRows);
+    ui->completedTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    ui->completedTable->setAlternatingRowColors(true);
+    ui->completedTable->horizontalHeader()->setStretchLastSection(false);
+    ui->completedTable->horizontalHeader()->setSectionResizeMode(0, QHeaderView::ResizeToContents); // 文件名
+    ui->completedTable->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Stretch);         // 文件路径
+    ui->completedTable->horizontalHeader()->setSectionResizeMode(2, QHeaderView::ResizeToContents); // 大小
+    // 右键菜单
+    ui->completedTable->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(ui->completedTable, &QTableWidget::customContextMenuRequested, this, [this](const QPoint &pos) {
+        QMenu menu;
+        QAction *removeAction = menu.addAction(tr("删除选中"));
+        QAction *clearAction = menu.addAction(tr("全部清空"));
+        QAction *act = menu.exec(ui->completedTable->viewport()->mapToGlobal(pos));
+        if (act == removeAction) {
+            QList<QTableWidgetItem*> selected = ui->completedTable->selectedItems();
+            QSet<int> rows;
+            for (QTableWidgetItem *item : selected) rows.insert(item->row());
+            QList<int> rowList = rows.values();
+            std::sort(rowList.begin(), rowList.end(), std::greater<int>());
+            // 批量删除选中任务
+            for (int row : rowList) {
+                QTableWidgetItem *item = ui->completedTable->item(row, 0); // 文件名列
+                QTableWidgetItem *pathItem = ui->completedTable->item(row, 1); // 路径列
+                if (item && pathItem) {
+                    QString fileName = item->text();
+                    QString savePath = pathItem->text();
+                    // 遍历所有已完成任务，找到对应的 taskId
+                    QList<DownloadTask*> completedTasks = m_downloadManager->getCompletedTasks();
+                    for (DownloadTask *task : completedTasks) {
+                        if (task->fileName() == fileName && task->savePath() == savePath) {
+                            m_downloadManager->removeTask(task->id());
+                            break;
+                        }
+                    }
+                }
+            }
+            loadTasks();
+        } else if (act == clearAction) {
+            m_downloadManager->removeCompletedTasks();
+            loadTasks();
+        }
+    });
 }
 
 void MainWindow::setupConnections()
 {
     // 连接 UI 信号
-    connect(ui->connectButton, &QPushButton::clicked, this, &MainWindow::onConnectClicked);
     connect(ui->browseButton, &QPushButton::clicked, this, &MainWindow::onBrowseClicked);
     connect(ui->clearButton, &QPushButton::clicked, this, &MainWindow::onClearClicked);
-    connect(ui->addBookmarkButton, &QPushButton::clicked, this, &MainWindow::onAddBookmarkClicked);
-    connect(ui->bookmarkCombo, &QComboBox::currentTextChanged, this, &MainWindow::onBookmarkSelected);
+    connect(ui->addTaskButton, &QPushButton::clicked, this, &MainWindow::onAddTaskButtonClicked);
     connect(ui->startAllButton, &QPushButton::clicked, this, &MainWindow::onStartAllClicked);
     connect(ui->pauseAllButton, &QPushButton::clicked, this, &MainWindow::onPauseAllClicked);
-    connect(ui->removeButton, &QPushButton::clicked, this, &MainWindow::onRemoveClicked);
-    connect(ui->clearCompletedButton, &QPushButton::clicked, this, &MainWindow::onClearCompletedClicked);
-    connect(ui->taskTable, &TaskTableWidget::startTaskRequested, this, &MainWindow::onStartTaskClicked);
-    connect(ui->taskTable, &TaskTableWidget::pauseTaskRequested, this, &MainWindow::onPauseTaskClicked);
-    connect(ui->taskTable, &TaskTableWidget::resumeTaskRequested, this, &MainWindow::onResumeTaskClicked);
-    connect(ui->taskTable, &TaskTableWidget::cancelTaskRequested, this, &MainWindow::onCancelTaskClicked);
+    connect(ui->browseSmbButton, &QPushButton::clicked, this, &MainWindow::onBrowseSmbButtonClicked);
     
     // 连接下载管理器信号
     connect(m_downloadManager, &DownloadManager::taskAdded, this, &MainWindow::onTaskAdded);
@@ -134,20 +164,22 @@ void MainWindow::setupConnections()
     connect(m_downloadManager, &DownloadManager::taskCompleted, this, &MainWindow::onTaskCompleted);
     connect(m_downloadManager, &DownloadManager::taskFailed, this, &MainWindow::onTaskFailed);
     connect(m_downloadManager, &DownloadManager::allTasksCompleted, this, &MainWindow::onAllTasksCompleted);
-    connect(m_downloadManager, &DownloadManager::taskProgress, this, &MainWindow::onTaskProgress);
-}
+    connect(m_downloadManager, &DownloadManager::taskProgress,
+            this, &MainWindow::onTaskProgress);
 
-
-void MainWindow::onConnectClicked()
-{
-    LOG_INFO("点击连接按钮");
-    QString url = ui->urlEdit->text().trimmed();
-    if (url.isEmpty()) {
-        showWarning(tr("请输入 SMB 地址"));
-        return;
-    }
-    LOG_INFO(QString("连接地址: %1").arg(url));
-    fetchSmbFileList(url);
+    // 连接 TaskTableWidget 的操作信号到 DownloadManager
+    connect(ui->taskTable, &TaskTableWidget::startTaskRequested, this, [this](DownloadTask *task) {
+        if (task) m_downloadManager->startTask(task->id());
+    });
+    connect(ui->taskTable, &TaskTableWidget::pauseTaskRequested, this, [this](DownloadTask *task) {
+        if (task) m_downloadManager->pauseTask(task->id());
+    });
+    connect(ui->taskTable, &TaskTableWidget::resumeTaskRequested, this, [this](DownloadTask *task) {
+        if (task) m_downloadManager->resumeTask(task->id());
+    });
+    connect(ui->taskTable, &TaskTableWidget::cancelTaskRequested, this, [this](DownloadTask *task) {
+        if (task) m_downloadManager->cancelTask(task->id());
+    });
 }
 
 void MainWindow::onBrowseClicked()
@@ -165,37 +197,8 @@ void MainWindow::onBrowseClicked()
 void MainWindow::onClearClicked()
 {
     LOG_INFO("清空输入");
-    ui->urlEdit->clear();
     ui->savePathEdit->setText(m_downloadManager->getDefaultSavePath());
-    ui->remoteFileTable->setRowCount(0);
-}
-
-void MainWindow::onAddBookmarkClicked()
-{
-    QString alias = ui->aliasEdit->text().trimmed();
-    QString url = ui->urlEdit->text().trimmed();
-    if (alias.isEmpty() || url.isEmpty()) {
-        showWarning(tr("书签名称和地址不能为空"));
-        return;
-    }
-
-    m_bookmarks[alias] = url;
-    if (ui->bookmarkCombo->findText(alias) == -1)
-        ui->bookmarkCombo->addItem(alias);
-
-    m_settings->beginGroup("Bookmarks");
-    m_settings->setValue(alias, url);
-    m_settings->endGroup();
-
-    ui->aliasEdit->clear();
-    showInfo(tr("书签已保存"));
-}
-
-void MainWindow::onBookmarkSelected(const QString &name)
-{
-    if (m_bookmarks.contains(name)) {
-        ui->urlEdit->setText(m_bookmarks.value(name));
-    }
+    // 已移除 remoteFileTable 相关代码
 }
 
 void MainWindow::onStartAllClicked()
@@ -212,81 +215,11 @@ void MainWindow::onPauseAllClicked()
     showInfo(tr("已暂停所有任务"));
 }
 
-void MainWindow::onRemoveClicked()
-{
-    LOG_INFO("点击删除任务");
-    QList<QTableWidgetItem*> selectedItems = ui->taskTable->selectedItems();
-    if (selectedItems.isEmpty()) {
-        showError(tr("请先选择要删除的任务"));
-        return;
-    }
-    
-    QSet<int> selectedRows;
-    for (QTableWidgetItem *item : selectedItems) {
-        selectedRows.insert(item->row());
-    }
-    
-    // 从后往前删除，避免索引变化
-    QList<int> rows = selectedRows.values();
-    std::sort(rows.begin(), rows.end(), std::greater<int>());
-    
-    for (int row : rows) {
-        QTableWidgetItem *item = ui->taskTable->item(row, 0);
-        if (item) {
-            DownloadTask *task = static_cast<DownloadTask*>(item->data(Qt::UserRole).value<void*>());
-            if (task) {
-                LOG_INFO(QString("删除任务 - ID: %1").arg(task->id()));
-                m_downloadManager->removeTask(task->id());
-            }
-        }
-    }
-}
-
-
-void MainWindow::onClearCompletedClicked()
-{
-    LOG_INFO("清空已完成的任务");
-    m_downloadManager->removeCompletedTasks();
-    showInfo(tr("已清空已完成的任务"));
-}
-
-void MainWindow::onStartTaskClicked(DownloadTask *task)
-{
-    if (!task)
-        return;
-    LOG_INFO(QString("开始任务 - ID: %1").arg(task->id()));
-    m_downloadManager->startTask(task->id());
-}
-
-void MainWindow::onPauseTaskClicked(DownloadTask *task)
-{
-    if (!task)
-        return;
-    LOG_INFO(QString("暂停任务 - ID: %1").arg(task->id()));
-    m_downloadManager->pauseTask(task->id());
-}
-
-void MainWindow::onResumeTaskClicked(DownloadTask *task)
-{
-    if (!task)
-        return;
-    LOG_INFO(QString("恢复任务 - ID: %1").arg(task->id()));
-    m_downloadManager->resumeTask(task->id());
-}
-
-void MainWindow::onCancelTaskClicked(DownloadTask *task)
-{
-    if (!task)
-        return;
-    LOG_INFO(QString("取消任务 - ID: %1").arg(task->id()));
-    m_downloadManager->cancelTask(task->id());
-}
-
 void MainWindow::onTaskAdded(const QString &taskId)
 {
     DownloadTask *task = m_downloadManager->getTask(taskId);
     if (task) {
-        ui->taskTable->addTask(task);
+        // ui->taskTable->addTask(task); // 已注释
         updateStatusBar();
         LOG_INFO(QString("任务已添加到界面 - ID: %1").arg(taskId));
     }
@@ -300,7 +233,7 @@ void MainWindow::onTaskRemoved(const QString &taskId)
         if (item) {
             DownloadTask *task = static_cast<DownloadTask*>(item->data(Qt::UserRole).value<void*>());
             if (task && task->id() == taskId) {
-                ui->taskTable->removeTask(task);
+                // ui->taskTable->removeTask(task); // 已注释
                 LOG_INFO(QString("任务已从界面移除 - ID: %1").arg(taskId));
                 break;
             }
@@ -313,7 +246,7 @@ void MainWindow::onTaskStarted(const QString &taskId)
 {
     DownloadTask *task = m_downloadManager->getTask(taskId);
     if (task) {
-        ui->taskTable->updateTask(task);
+        // ui->taskTable->updateTask(task); // 已注释
         LOG_INFO(QString("任务开始 - ID: %1").arg(taskId));
     }
 }
@@ -322,7 +255,7 @@ void MainWindow::onTaskPaused(const QString &taskId)
 {
     DownloadTask *task = m_downloadManager->getTask(taskId);
     if (task) {
-        ui->taskTable->updateTask(task);
+        // ui->taskTable->updateTask(task); // 已注释
         LOG_INFO(QString("任务暂停 - ID: %1").arg(taskId));
     }
 }
@@ -331,17 +264,8 @@ void MainWindow::onTaskResumed(const QString &taskId)
 {
     DownloadTask *task = m_downloadManager->getTask(taskId);
     if (task) {
-        ui->taskTable->updateTask(task);
+        // ui->taskTable->updateTask(task); // 已注释
         LOG_INFO(QString("任务恢复 - ID: %1").arg(taskId));
-    }
-}
-
-void MainWindow::onTaskCancelled(const QString &taskId)
-{
-    DownloadTask *task = m_downloadManager->getTask(taskId);
-    if (task) {
-        ui->taskTable->updateTask(task);
-        LOG_INFO(QString("任务取消 - ID: %1").arg(taskId));
     }
 }
 
@@ -349,9 +273,10 @@ void MainWindow::onTaskCompleted(const QString &taskId)
 {
     DownloadTask *task = m_downloadManager->getTask(taskId);
     if (task) {
-        ui->taskTable->updateTask(task);
+        // ui->taskTable->updateTask(task); // 已注释
         LOG_INFO(QString("任务完成 - ID: %1").arg(taskId));
         showInfo(tr("下载完成：%1").arg(task->fileName()));
+        loadTasks();
     }
 }
 
@@ -359,9 +284,20 @@ void MainWindow::onTaskFailed(const QString &taskId, const QString &error)
 {
     DownloadTask *task = m_downloadManager->getTask(taskId);
     if (task) {
-        ui->taskTable->updateTask(task);
+        // ui->taskTable->updateTask(task); // 已注释
         LOG_WARNING(QString("任务失败 - ID: %1, 错误: %2").arg(taskId).arg(error));
         showError(tr("下载失败：%1 - %2").arg(task->fileName()).arg(error));
+        loadTasks();
+    }
+}
+
+void MainWindow::onTaskCancelled(const QString &taskId)
+{
+    DownloadTask *task = m_downloadManager->getTask(taskId);
+    if (task) {
+        // ui->taskTable->updateTask(task); // 已注释
+        LOG_INFO(QString("任务取消 - ID: %1").arg(taskId));
+        loadTasks();
     }
 }
 
@@ -379,12 +315,11 @@ void MainWindow::onUpdateTimer()
         if (item) {
             DownloadTask *task = static_cast<DownloadTask*>(item->data(Qt::UserRole).value<void*>());
             if (task) {
-                ui->taskTable->updateTask(task);
+                // ui->taskTable->updateTask(task); // 已注释
             }
         }
     }
 }
-
 
 void MainWindow::updateStatusBar()
 {
@@ -437,49 +372,8 @@ QString MainWindow::formatBytes(qint64 bytes) const
 
 void MainWindow::fetchSmbFileList(const QString &url)
 {
-    LOG_INFO(QString("获取 SMB 文件列表: %1").arg(url));
-    QString uncPath = toUncPath(url);
-    ui->remoteFileTable->setRowCount(0);
-
-    QDir dir(uncPath);
-    if (!dir.exists()) {
-        showError(tr("无法打开目录"));
-        return;
-    }
-
-    QFileInfoList list = dir.entryInfoList(QDir::AllEntries | QDir::NoDotAndDotDot);
-    int row = 0;
-    for (const QFileInfo &info : list) {
-        QString name = info.fileName();
-        bool isDir = info.isDir();
-        qint64 size = info.size();
-
-        ui->remoteFileTable->insertRow(row);
-        ui->remoteFileTable->setItem(row, 0, new QTableWidgetItem(name));
-        ui->remoteFileTable->setItem(row, 1, new QTableWidgetItem(isDir ? QString() : formatBytes(size)));
-        ui->remoteFileTable->setItem(row, 2, new QTableWidgetItem(isDir ? tr("目录") : tr("文件")));
-
-        QPushButton *btn = new QPushButton(isDir ? tr("下载目录") : tr("下载"));
-        ui->remoteFileTable->setCellWidget(row, 3, btn);
-        QString fullUrl = url;
-        if (!fullUrl.endsWith('/'))
-            fullUrl += '/';
-        fullUrl += name;
-        if (isDir) {
-            connect(btn, &QPushButton::clicked, this, [this, fullUrl]() {
-                onDownloadDirectoryClicked(fullUrl);
-            });
-        } else {
-            connect(btn, &QPushButton::clicked, this, [this, fullUrl]() {
-                onDownloadFileClicked(fullUrl);
-            });
-        }
-        ++row;
-    }
-
-    ui->remoteFileTable->resizeColumnsToContents();
-
-    LOG_INFO("SMB 文件列表获取完成");
+    // 这里原本有 remoteFileTable 的相关操作，已移除
+    // 你可以根据新 UI 逻辑实现文件选择后的处理
 }
 
 void MainWindow::onDownloadFileClicked(const QString &fileUrl)
@@ -491,7 +385,7 @@ void MainWindow::onDownloadFileClicked(const QString &fileUrl)
         savePath = m_downloadManager->getDefaultSavePath();
 
     // 添加任务后立即启动下载，避免用户还需手动点击开始
-    QString taskId = m_downloadManager->addTask(fileUrl, savePath, DownloadTask::SMB);
+    QString taskId = m_downloadManager->addTask(fileUrl, savePath);
     m_downloadManager->startTask(taskId);
 }
 
@@ -537,12 +431,11 @@ void MainWindow::downloadDirectoryRecursive(const QString &dirUrl, const QString
             QString subLocal = QDir(localPath).filePath(name);
             downloadDirectoryRecursive(childUrl, subLocal);
         } else {
-            QString taskId = m_downloadManager->addTask(childUrl, localPath, DownloadTask::SMB);
+            QString taskId = m_downloadManager->addTask(childUrl, localPath);
             m_downloadManager->startTask(taskId);
         }
     }
 }
-
 
 void MainWindow::loadTasks()
 {
@@ -551,35 +444,22 @@ void MainWindow::loadTasks()
     QList<DownloadTask*> tasks = m_downloadManager->getAllTasks();
 
     ui->taskTable->setRowCount(0);
+    ui->completedTable->setRowCount(0);
     for (DownloadTask *task : tasks) {
-        ui->taskTable->addTask(task);
+        LOG_INFO(QString("遍历任务 - ID: %1, 状态: %2").arg(task->id()).arg(task->status()));
+        if (task->status() == DownloadTask::Completed || task->status() == DownloadTask::Failed || task->status() == DownloadTask::Cancelled) {
+            int row = ui->completedTable->rowCount();
+            ui->completedTable->insertRow(row);
+            ui->completedTable->setItem(row, 0, new QTableWidgetItem(task->fileName()));
+            ui->completedTable->setItem(row, 1, new QTableWidgetItem(task->savePath()));
+            ui->completedTable->setItem(row, 2, new QTableWidgetItem(formatBytes(task->downloadedSize())));
+            LOG_INFO(QString("已插入到已完成任务表格 - ID: %1, 行: %2").arg(task->id()).arg(row));
+        } else {
+            ui->taskTable->addTask(task);
+            LOG_INFO(QString("已插入到当前任务表格 - ID: %1").arg(task->id()));
+        }
     }
-
     updateStatusBar();
-}
-
-void MainWindow::loadBookmarks()
-{
-    LOG_INFO("加载书签");
-    ui->bookmarkCombo->clear();
-    m_bookmarks.clear();
-
-    m_settings->beginGroup("Bookmarks");
-    const QStringList keys = m_settings->allKeys();
-    for (const QString &key : keys) {
-        QString url = m_settings->value(key).toString();
-        m_bookmarks[key] = url;
-        ui->bookmarkCombo->addItem(key);
-    }
-    m_settings->endGroup();
-}
-
-void MainWindow::onTaskProgress(const QString &taskId, qint64 bytesReceived, qint64 bytesTotal)
-{
-    DownloadTask *task = m_downloadManager->getTask(taskId);
-    if (task) {
-        ui->taskTable->updateTask(task);
-    }
 }
 
 void MainWindow::createTrayMenu()
@@ -623,5 +503,42 @@ void MainWindow::closeEvent(QCloseEvent *event)
     } else {
         LOG_INFO("窗口关闭");
         QMainWindow::closeEvent(event);
+    }
+}
+
+void MainWindow::onBrowseSmbButtonClicked()
+{
+    // 这里只做本地目录选择示例，后续可集成远程SMB浏览
+    QString file = QFileDialog::getOpenFileName(this, tr("选择远程文件"));
+    if (!file.isEmpty()) {
+        ui->urlEdit->setText(file);
+    }
+}
+
+void MainWindow::onAddTaskButtonClicked()
+{
+    QString url = ui->urlEdit->text().trimmed();
+    QString savePath = ui->savePathEdit->text().trimmed();
+    if (url.isEmpty()) {
+        showWarning(tr("请输入下载地址"));
+        return;
+    }
+    if (savePath.isEmpty()) {
+        savePath = m_downloadManager->getDefaultSavePath();
+    }
+    QString taskId = m_downloadManager->addTask(url, savePath);
+    m_downloadManager->startTask(taskId);
+    // 立即刷新表格
+    loadTasks();
+    updateStatusBar();
+    showInfo(tr("已添加下载任务"));
+}
+
+void MainWindow::onTaskProgress(const QString &taskId, qint64 bytesReceived, qint64 bytesTotal)
+{
+    DownloadTask *task = m_downloadManager->getTask(taskId);
+    if (task) {
+        ui->taskTable->updateTask(task);
+        updateStatusBar();
     }
 }

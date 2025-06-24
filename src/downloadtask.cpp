@@ -13,7 +13,6 @@ DownloadTask::DownloadTask(QObject *parent)
     , m_totalSize(0)
     , m_speed(0)
     , m_supportsResume(false)
-    , m_protocol(SMB)
 {
     LOG_DEBUG("创建新的下载任务");
     generateId();
@@ -24,12 +23,6 @@ DownloadTask::DownloadTask(const QString &url, const QString &savePath, QObject 
 {
     setUrl(url);
     setSavePath(savePath);
-}
-
-DownloadTask::DownloadTask(const QString &url, const QString &savePath, ProtocolType protocol, QObject *parent)
-    : DownloadTask(url, savePath, parent)
-{
-    setProtocol(protocol);
 }
 
 DownloadTask::~DownloadTask()
@@ -48,11 +41,6 @@ void DownloadTask::setUrl(const QString &url)
         fileName = "downloaded_file";
     }
     setFileName(fileName);
-    
-    // 根据 URL 协议自动检测协议类型
-    if (url.startsWith("smb://", Qt::CaseInsensitive)) {
-        setProtocol(SMB);
-    }
 }
 
 void DownloadTask::setSavePath(const QString &path)
@@ -133,23 +121,6 @@ void DownloadTask::setErrorMessage(const QString &message)
 void DownloadTask::generateId()
 {
     m_id = QUuid::createUuid().toString(QUuid::WithoutBraces);
-}
-
-void DownloadTask::setProtocol(ProtocolType protocol)
-{
-    if (m_protocol != protocol) {
-        m_protocol = protocol;
-    }
-}
-
-QString DownloadTask::protocolText() const
-{
-    switch (m_protocol) {
-    case SMB:
-        return QObject::tr("SMB");
-    default:
-        return QObject::tr("未知");
-    }
 }
 
 QString DownloadTask::statusText() const

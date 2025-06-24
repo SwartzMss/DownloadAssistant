@@ -12,7 +12,7 @@ TaskTableWidget::TaskTableWidget(QWidget *parent)
 
 void TaskTableWidget::setupTable()
 {
-    setColumnCount(7);
+    setColumnCount(6);
     setHorizontalHeaderLabels({tr("文件名"), tr("状态"), tr("进度"),
                                tr("速度"), tr("大小"), tr("剩余时间"), tr("操作")});
 
@@ -27,14 +27,12 @@ void TaskTableWidget::setupTable()
     horizontalHeader()->setSectionResizeMode(3, QHeaderView::ResizeToContents);
     horizontalHeader()->setSectionResizeMode(4, QHeaderView::ResizeToContents);
     horizontalHeader()->setSectionResizeMode(5, QHeaderView::ResizeToContents);
-    horizontalHeader()->setSectionResizeMode(6, QHeaderView::ResizeToContents);
 }
 
 void TaskTableWidget::addTask(DownloadTask *task)
 {
     int row = rowCount();
     insertRow(row);
-
 
     QTableWidgetItem *fileNameItem = new QTableWidgetItem(task->fileName());
     fileNameItem->setData(Qt::UserRole, QVariant::fromValue(static_cast<void*>(task)));
@@ -123,12 +121,12 @@ void TaskTableWidget::createOperationButtons(int row, DownloadTask *task)
     layout->addWidget(resumeButton);
     layout->addWidget(cancelButton);
 
-    setCellWidget(row, 6, widget);
+    setCellWidget(row, 5, widget);
 }
 
 void TaskTableWidget::updateOperationButtons(int row, DownloadTask *task)
 {
-    QWidget *widget = cellWidget(row, 6);
+    QWidget *widget = cellWidget(row, 5);
     if (!widget) return;
 
     QList<QPushButton*> buttons = widget->findChildren<QPushButton*>();

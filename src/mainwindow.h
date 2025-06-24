@@ -7,7 +7,6 @@
 #include <QSystemTrayIcon>
 #include <QMenu>
 #include <QSettings>
-#include <QMap>
 #include "downloadmanager.h"
 #include "tasktablewidget.h"
 
@@ -25,13 +24,9 @@ public:
 
 private slots:
     // UI 事件处理
-    void onConnectClicked();
     void onBrowseClicked();
-    void onStartTaskClicked(DownloadTask *task);
-    void onPauseTaskClicked(DownloadTask *task);
-    void onResumeTaskClicked(DownloadTask *task);
-    void onCancelTaskClicked(DownloadTask *task);
-    void onClearCompletedClicked();
+    void onBrowseSmbButtonClicked();
+    void onAddTaskButtonClicked();
     
     // 下载管理器事件
     void onTaskAdded(const QString &taskId);
@@ -49,8 +44,6 @@ private slots:
     void onTrayIconActivated(QSystemTrayIcon::ActivationReason reason);
     void onDownloadFileClicked(const QString &fileName);
     void onDownloadDirectoryClicked(const QString &dirUrl);
-    void onAddBookmarkClicked();
-    void onBookmarkSelected(const QString &name);
 
 private:
     // UI 组件
@@ -63,13 +56,11 @@ private:
     QSystemTrayIcon *m_trayIcon;
     QMenu *m_trayMenu;
     QSettings *m_settings;
-    QMap<QString, QString> m_bookmarks;
     
     // 辅助方法
     void setupUI();
     void setupConnections();
     void loadTasks();
-    void loadBookmarks();
     void updateStatusBar();
     void onClearClicked();
     void onStartAllClicked();

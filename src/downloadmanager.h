@@ -4,7 +4,11 @@
 #include <QObject>
 #include <QList>
 #include <QMap>
-#include <QSettings>
+#include <QFile>
+#include <QTextStream>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QJsonArray>
 #include "downloadtask.h"
 #include "smbdownloader.h"
 
@@ -18,8 +22,7 @@ public:
 
     // 任务管理
     QString addTask(const QString &url,
-                    const QString &savePath = "",
-                    DownloadTask::ProtocolType protocol = DownloadTask::SMB);
+                    const QString &savePath = "");
     void removeTask(const QString &taskId);
     void removeCompletedTasks();
     
@@ -51,6 +54,11 @@ public:
     void saveTasks();
     void loadTasks();
 
+    // 新增
+    QString m_configPath;
+    void loadFromJson();
+    void saveToJson();
+
 signals:
     void taskAdded(const QString &taskId);
     void taskRemoved(const QString &taskId);
@@ -76,7 +84,6 @@ private slots:
 private:
     QMap<QString, DownloadTask*> m_tasks;
     SmbDownloader *m_smbDownloader;
-    QSettings *m_settings;
     
     QString m_defaultSavePath;
     int m_maxConcurrentDownloads;

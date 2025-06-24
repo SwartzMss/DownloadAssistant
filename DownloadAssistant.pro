@@ -55,4 +55,6 @@ CONFIG(release, debug|release) {
     DESTDIR = release
 } else {
     DESTDIR = debug
-} 
+}
+
+INCLUDEPATH += $$PWD/src 

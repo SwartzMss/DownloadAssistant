@@ -16,259 +16,237 @@
   <widget class="QWidget" name="centralwidget">
    <layout class="QVBoxLayout" name="verticalLayout">
     <item>
-     <widget class="QGroupBox" name="groupBox">
-      <property name="title">
-       <string>连接设置</string>
+     <widget class="QSplitter" name="mainSplitter">
+      <property name="orientation">
+       <enum>Qt::Orientation::Horizontal</enum>
       </property>
-      <layout class="QGridLayout" name="gridLayout">
-       <item row="0" column="0">
-        <widget class="QLabel" name="label_3">
-         <property name="text">
-          <string>地址：</string>
-         </property>
-        </widget>
-       </item>
-       <item row="0" column="1">
-        <layout class="QHBoxLayout" name="urlBrowseLayout">
-         <item>
-          <widget class="QLineEdit" name="urlEdit">
-           <property name="placeholderText">
-            <string>请输入 SMB 目录地址，例如：smb://192.168.1.100/share/</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QPushButton" name="connectButton">
-           <property name="text">
-            <string>连接</string>
-           </property>
-          </widget>
-         </item>
-        </layout>
-       </item>
-       <item row="1" column="0">
-        <widget class="QLabel" name="labelBookmark">
-         <property name="text">
-          <string>书签：</string>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="1">
-        <layout class="QHBoxLayout" name="bookmarkLayout">
-         <item>
-          <widget class="QComboBox" name="bookmarkCombo"/>
-         </item>
-         <item>
-          <widget class="QLineEdit" name="aliasEdit">
-           <property name="placeholderText">
-            <string>书签名称</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QPushButton" name="addBookmarkButton">
-           <property name="text">
-            <string>保存书签</string>
-           </property>
-          </widget>
-         </item>
-        </layout>
-       </item>
-       <item row="2" column="0">
-        <widget class="QLabel" name="label_2">
-         <property name="text">
-          <string>保存位置：</string>
-         </property>
-        </widget>
-       </item>
-       <item row="2" column="1">
-        <layout class="QHBoxLayout" name="horizontalLayout">
-         <item>
-          <widget class="QLineEdit" name="savePathEdit">
-           <property name="placeholderText">
-            <string>选择文件保存位置</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QPushButton" name="browseButton">
-           <property name="text">
-            <string>浏览...</string>
-           </property>
-          </widget>
-         </item>
-        </layout>
-       </item>
-      <item row="3" column="0" colspan="2">
-        <layout class="QHBoxLayout" name="horizontalLayout_2">
-         <item>
-          <widget class="QPushButton" name="clearButton">
-           <property name="text">
-            <string>清空</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <spacer name="horizontalSpacer">
-           <property name="orientation">
-            <enum>Qt::Horizontal</enum>
-           </property>
-           <property name="sizeHint" stdset="0">
-            <size>
-             <width>40</width>
-             <height>20</height>
-            </size>
-           </property>
-          </spacer>
-         </item>
-        </layout>
-       </item>
-      </layout>
-      </widget>
-     </item>
-     <item>
-      <widget class="QGroupBox" name="remoteGroupBox">
-       <property name="title">
-        <string>远程文件列表</string>
-       </property>
-       <layout class="QVBoxLayout" name="remoteLayout">
+      <widget class="QWidget" name="rightPanel">
+       <layout class="QVBoxLayout" name="rightLayout">
         <item>
-         <widget class="QTableWidget" name="remoteFileTable">
-          <column>
-           <property name="text">
-            <string>名称</string>
-           </property>
-          </column>
-          <column>
-           <property name="text">
-            <string>大小</string>
-           </property>
-          </column>
-          <column>
-           <property name="text">
-            <string>类型</string>
-           </property>
-          </column>
-          <column>
-           <property name="text">
-            <string>操作</string>
-           </property>
-          </column>
+         <widget class="QGroupBox" name="groupBox">
+          <property name="title">
+           <string>新建下载任务</string>
+          </property>
+          <layout class="QGridLayout" name="gridLayout">
+           <item row="0" column="0">
+            <widget class="QLabel" name="label_3">
+             <property name="text">
+              <string>下载地址：</string>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="1">
+            <layout class="QHBoxLayout" name="urlBrowseLayout">
+             <item>
+              <widget class="QLineEdit" name="urlEdit"/>
+             </item>
+             <item>
+              <widget class="QPushButton" name="browseSmbButton">
+               <property name="text">
+                <string>浏览远程文件</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+           <item row="1" column="0">
+            <widget class="QLabel" name="label_2">
+             <property name="text">
+              <string>保存位置：</string>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="1">
+            <layout class="QHBoxLayout" name="horizontalLayout">
+             <item>
+              <widget class="QLineEdit" name="savePathEdit">
+               <property name="placeholderText">
+                <string>选择文件保存位置</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QPushButton" name="browseButton">
+               <property name="text">
+                <string>浏览...</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+           <item row="2" column="0" colspan="2">
+            <layout class="QHBoxLayout" name="horizontalLayout_2">
+             <item>
+              <widget class="QPushButton" name="addTaskButton">
+               <property name="text">
+                <string>添加下载任务</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QPushButton" name="clearButton">
+               <property name="text">
+                <string>清空</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <spacer name="horizontalSpacer">
+               <property name="orientation">
+                <enum>Qt::Orientation::Horizontal</enum>
+               </property>
+               <property name="sizeHint" stdset="0">
+                <size>
+                 <width>40</width>
+                 <height>20</height>
+                </size>
+               </property>
+              </spacer>
+             </item>
+            </layout>
+           </item>
+          </layout>
+         </widget>
+        </item>
+        <item>
+         <widget class="QGroupBox" name="groupBox_2">
+          <property name="title">
+           <string>下载任务列表</string>
+          </property>
+          <layout class="QVBoxLayout" name="verticalLayout_2">
+           <item>
+            <widget class="QTabWidget" name="taskTabWidget">
+             <property name="currentIndex">
+              <number>0</number>
+             </property>
+             <widget class="QWidget" name="tab">
+              <attribute name="title">
+               <string>当前任务</string>
+              </attribute>
+              <layout class="QVBoxLayout" name="verticalLayout_3">
+               <item>
+                <widget class="TaskTableWidget" name="taskTable">
+                 <property name="selectionBehavior">
+                  <enum>QAbstractItemView::SelectionBehavior::SelectRows</enum>
+                 </property>
+                 <property name="sortingEnabled">
+                  <bool>true</bool>
+                 </property>
+                 <column>
+                  <property name="text">
+                   <string>文件名</string>
+                  </property>
+                 </column>
+                 <column>
+                  <property name="text">
+                   <string>状态</string>
+                  </property>
+                 </column>
+                 <column>
+                  <property name="text">
+                   <string>进度</string>
+                  </property>
+                 </column>
+                 <column>
+                  <property name="text">
+                   <string>速度</string>
+                  </property>
+                 </column>
+                 <column>
+                  <property name="text">
+                   <string>大小</string>
+                  </property>
+                 </column>
+                 <column>
+                  <property name="text">
+                   <string>剩余时间</string>
+                  </property>
+                 </column>
+                 <column>
+                  <property name="text">
+                   <string>操作</string>
+                  </property>
+                 </column>
+                </widget>
+               </item>
+               <item>
+                <layout class="QHBoxLayout" name="horizontalLayout_3">
+                 <item>
+                  <widget class="QPushButton" name="startAllButton">
+                   <property name="text">
+                    <string>全部开始</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QPushButton" name="pauseAllButton">
+                   <property name="text">
+                    <string>全部暂停</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <spacer name="horizontalSpacer_2">
+                   <property name="orientation">
+                    <enum>Qt::Orientation::Horizontal</enum>
+                   </property>
+                   <property name="sizeHint" stdset="0">
+                    <size>
+                     <width>40</width>
+                     <height>20</height>
+                    </size>
+                   </property>
+                  </spacer>
+                 </item>
+                </layout>
+               </item>
+              </layout>
+             </widget>
+             <widget class="QWidget" name="tab_2">
+              <attribute name="title">
+               <string>已完成任务</string>
+              </attribute>
+              <layout class="QVBoxLayout" name="verticalLayout_4">
+               <item>
+                <widget class="QTableWidget" name="completedTable">
+                 <property name="selectionBehavior">
+                  <enum>QAbstractItemView::SelectionBehavior::SelectRows</enum>
+                 </property>
+                 <property name="sortingEnabled">
+                  <bool>true</bool>
+                 </property>
+                 <column>
+                  <property name="text">
+                   <string>文件名</string>
+                  </property>
+                 </column>
+                 <column>
+                  <property name="text">
+                   <string>文件路径</string>
+                  </property>
+                 </column>
+                 <column>
+                  <property name="text">
+                   <string>大小</string>
+                  </property>
+                 </column>
+                </widget>
+               </item>
+              </layout>
+             </widget>
+            </widget>
+           </item>
+          </layout>
          </widget>
         </item>
        </layout>
       </widget>
-     </item>
-     <item>
-      <widget class="QGroupBox" name="groupBox_2">
-      <property name="title">
-       <string>下载任务列表</string>
-      </property>
-      <layout class="QVBoxLayout" name="verticalLayout_2">
-       <item>
-        <widget class="TaskTableWidget" name="taskTable">
-         <property name="selectionBehavior">
-          <enum>QAbstractItemView::SelectRows</enum>
-         </property>
-         <property name="sortingEnabled">
-          <bool>true</bool>
-         </property>
-         <column>
-          <property name="text">
-           <string>文件名</string>
-          </property>
-         </column>
-         <column>
-          <property name="text">
-           <string>状态</string>
-          </property>
-         </column>
-         <column>
-          <property name="text">
-           <string>进度</string>
-          </property>
-         </column>
-         <column>
-          <property name="text">
-           <string>速度</string>
-          </property>
-         </column>
-         <column>
-          <property name="text">
-           <string>大小</string>
-          </property>
-         </column>
-         <column>
-          <property name="text">
-           <string>剩余时间</string>
-          </property>
-         </column>
-         <column>
-          <property name="text">
-           <string>操作</string>
-          </property>
-         </column>
-        </widget>
-       </item>
-       <item>
-        <layout class="QHBoxLayout" name="horizontalLayout_3">
-         <item>
-          <widget class="QPushButton" name="startAllButton">
-           <property name="text">
-            <string>全部开始</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QPushButton" name="pauseAllButton">
-           <property name="text">
-            <string>全部暂停</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QPushButton" name="removeButton">
-           <property name="text">
-            <string>删除选中</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QPushButton" name="clearCompletedButton">
-           <property name="text">
-            <string>清空已完成</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <spacer name="horizontalSpacer_2">
-           <property name="orientation">
-            <enum>Qt::Horizontal</enum>
-           </property>
-           <property name="sizeHint" stdset="0">
-            <size>
-             <width>40</width>
-             <height>20</height>
-            </size>
-           </property>
-          </spacer>
-         </item>
-        </layout>
-       </item>
-      </layout>
      </widget>
     </item>
    </layout>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
  </widget>
- <customwidgets>
-  <customwidget>
-   <class>TaskTableWidget</class>
-   <extends>QTableWidget</extends>
-   <header>tasktablewidget.h</header>
-  </customwidget>
- </customwidgets>
  <resources/>
  <connections/>
 </ui>
