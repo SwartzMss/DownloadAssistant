@@ -109,6 +109,13 @@ QString Logger::levelToString(LogLevel level) const
 
 QString Logger::getCurrentThreadId() const
 {
+    QThread *current = QThread::currentThread();
+    QThread *mainThread = QCoreApplication::instance() ? QCoreApplication::instance()->thread() : nullptr;
+
+    if (current == mainThread) {
+        return "MainThread";
+    }
+
     return QString::number(reinterpret_cast<quintptr>(QThread::currentThreadId()));
 }
 
