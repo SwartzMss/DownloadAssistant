@@ -17,7 +17,7 @@ DownloadManager::DownloadManager(QObject *parent)
     : QObject(parent)
     , m_smbDownloader(new SmbDownloader(this))
     , m_configPath(QCoreApplication::applicationDirPath() + "/config.json")
-    , m_maxConcurrentDownloads(3)
+    , m_maxConcurrentDownloads(5)
     , m_activeDownloadCount(0)
 {
     LOG_INFO("DownloadManager 初始化开始");
