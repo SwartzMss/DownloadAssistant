@@ -8,7 +8,6 @@
 #include <QApplication>
 #include <QSystemTrayIcon>
 #include <QMenu>
-#include <QSettings>
 #include <QCoreApplication>
 #include <QCloseEvent>
 #include <algorithm>
@@ -53,7 +52,6 @@ MainWindow::MainWindow(QWidget *parent)
     , m_taskModel(new QStandardItemModel(this))
     , m_trayIcon(nullptr)
     , m_trayMenu(nullptr)
-    , m_settings(new QSettings(QCoreApplication::applicationDirPath() + "/config.ini", QSettings::IniFormat, this))
     , m_smbCheckThread(nullptr)
 {
     LOG_INFO("MainWindow 初始化开始");
@@ -65,7 +63,7 @@ MainWindow::MainWindow(QWidget *parent)
     setupConnections();
 
     // 从配置中恢复上一次输入的下载地址
-    ui->urlEdit->setText(m_settings->value("lastUrl").toString());
+    ui->urlEdit->setText(m_downloadManager->getLastUrl());
     
     // 设置默认保存路径
     ui->savePathEdit->setText(m_downloadManager->getDefaultSavePath());
@@ -99,8 +97,7 @@ MainWindow::MainWindow(QWidget *parent)
 MainWindow::~MainWindow()
 {
     // 保存最后一次输入的下载地址
-    m_settings->setValue("lastUrl", ui->urlEdit->text());
-    m_settings->sync();
+    m_downloadManager->setLastUrl(ui->urlEdit->text());
     if (m_smbCheckThread) {
         m_smbCheckThread->quit();
         m_smbCheckThread->wait();

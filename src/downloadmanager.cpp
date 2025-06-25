@@ -19,6 +19,7 @@ DownloadManager::DownloadManager(QObject *parent)
     , m_configPath(QCoreApplication::applicationDirPath() + "/config.json")
     , m_maxConcurrentDownloads(5)
     , m_activeDownloadCount(0)
+    , m_lastUrl("")
 {
     LOG_INFO("DownloadManager 初始化开始");
     
@@ -363,6 +364,17 @@ void DownloadManager::setMaxConcurrentDownloads(int max)
     saveTasks();
 }
 
+QString DownloadManager::getLastUrl() const
+{
+    return m_lastUrl;
+}
+
+void DownloadManager::setLastUrl(const QString &url)
+{
+    m_lastUrl = url;
+    saveTasks();
+}
+
 void DownloadManager::saveTasks()
 {
     LOG_INFO("保存任务列表");
@@ -387,6 +399,7 @@ void DownloadManager::saveTasks()
     json["tasks"] = tasksArray;
     json["defaultSavePath"] = m_defaultSavePath;
     json["maxConcurrentDownloads"] = m_maxConcurrentDownloads;
+    json["lastUrl"] = m_lastUrl;
     
     QFile file(m_configPath);
     if (file.open(QIODevice::WriteOnly)) {
@@ -424,6 +437,7 @@ void DownloadManager::loadTasks()
             max = 8;
         }
         m_maxConcurrentDownloads = max;
+        m_lastUrl = json["lastUrl"].toString();
         for (const QJsonValue &value : tasksArray) {
             QJsonObject taskObject = value.toObject();
             QString id = taskObject["id"].toString();
