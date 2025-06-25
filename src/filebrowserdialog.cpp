@@ -1,6 +1,8 @@
 #include "filebrowserdialog.h"
 #include <QFileSystemModel>
 #include <QTreeView>
+// TODO: Introduce SmbDirModelWorker to load QFileSystemModel in a
+// background thread for remote SMB directories without blocking the UI.
 #include <QVBoxLayout>
 #include <QDialogButtonBox>
 #include <QHeaderView>
