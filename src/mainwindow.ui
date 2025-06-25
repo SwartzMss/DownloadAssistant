@@ -98,10 +98,10 @@
            <item row="3" column="1">
             <widget class="QSpinBox" name="concurrencySpinBox">
              <property name="minimum">
-              <number>1</number>
+              <number>3</number>
              </property>
              <property name="maximum">
-              <number>50</number>
+              <number>8</number>
              </property>
              <property name="value">
               <number>5</number>
