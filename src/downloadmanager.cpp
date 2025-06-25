@@ -122,6 +122,7 @@ void DownloadManager::removeTask(const QString &taskId)
     
     LOG_INFO(QString("任务已移除 - ID: %1").arg(taskId));
     emit taskRemoved(taskId);
+    saveTasks();
 }
 
 void DownloadManager::removeCompletedTasks()
