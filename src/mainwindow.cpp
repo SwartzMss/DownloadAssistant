@@ -16,6 +16,7 @@
 #include "logger.h"
 #include "tasktablewidget.h"
 #include "filebrowserdialog.h"
+#include "directoryworker.h"
 #include <QPushButton>
 #include <QTableWidgetItem>
 #include <QHeaderView>
@@ -506,34 +507,14 @@ void MainWindow::onDownloadDirectoryClicked(const QString &dirUrl)
     }
 
     QString localPath = QDir(savePath).filePath(dirName);
-    downloadDirectoryRecursive(dirUrl, localPath);
-}
-
-void MainWindow::downloadDirectoryRecursive(const QString &dirUrl, const QString &localPath)
-{
-    QString uncPath = toUncPath(dirUrl);
-    QDir dir(uncPath);
-    if (!dir.exists())
-        return;
-
-    QDir().mkpath(localPath);
-
-    QFileInfoList list = dir.entryInfoList(QDir::AllEntries | QDir::NoDotAndDotDot);
-    for (const QFileInfo &info : list) {
-        QString name = info.fileName();
-        QString childUrl = dirUrl;
-        if (!childUrl.endsWith('/'))
-            childUrl += '/';
-        childUrl += name;
-
-        if (info.isDir()) {
-            QString subLocal = QDir(localPath).filePath(name);
-            downloadDirectoryRecursive(childUrl, subLocal);
-        } else {
-            QString taskId = m_downloadManager->addTask(childUrl, localPath);
-            m_downloadManager->startTask(taskId);
-        }
-    }
+    DirectoryWorker *worker = new DirectoryWorker(dirUrl, localPath, m_downloadManager, this);
+    connect(worker, &DirectoryWorker::finished, this, [this, worker]() {
+        worker->deleteLater();
+        loadTasks();
+        updateStatusBar();
+        showInfo(tr("已添加下载任务"));
+    });
+    worker->start();
 }
 
 void MainWindow::loadTasks()
