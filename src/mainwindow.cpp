@@ -230,7 +230,6 @@ void MainWindow::setupConnections()
 {
     // 连接 UI 信号
     connect(ui->browseButton, &QPushButton::clicked, this, &MainWindow::onBrowseClicked);
-    connect(ui->addTaskButton, &QPushButton::clicked, this, &MainWindow::onAddTaskButtonClicked);
     connect(ui->startAllButton, &QPushButton::clicked, this, &MainWindow::onStartAllClicked);
     connect(ui->pauseAllButton, &QPushButton::clicked, this, &MainWindow::onPauseAllClicked);
     connect(ui->browseSmbButton, &QPushButton::clicked, this, &MainWindow::onBrowseSmbButtonClicked);
@@ -662,25 +661,6 @@ void MainWindow::onBrowseSmbButtonClicked()
     showInfo(tr("已添加下载任务"));
 }
 
-void MainWindow::onAddTaskButtonClicked()
-{
-    QString url = ui->urlEdit->text().trimmed();
-    QString savePath = ui->savePathEdit->text().trimmed();
-    if (url.isEmpty()) {
-        showWarning(tr("请输入下载地址"));
-        return;
-    }
-    if (savePath.isEmpty()) {
-        savePath = m_downloadManager->getDefaultSavePath();
-    }
-    savePath = buildFinalSavePath(savePath);
-    QString taskId = m_downloadManager->addTask(url, savePath);
-    m_downloadManager->startTask(taskId);
-    // 立即刷新表格
-    loadTasks();
-    updateStatusBar();
-    showInfo(tr("已添加下载任务"));
-}
 
 void MainWindow::onTaskProgress(const QString &taskId, qint64 bytesReceived, qint64 bytesTotal)
 {
