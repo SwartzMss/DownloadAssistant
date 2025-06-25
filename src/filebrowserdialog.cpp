@@ -1,5 +1,6 @@
 #include "filebrowserdialog.h"
 #include <QFileSystemModel>
+#include "logger.h"
 #include <QTreeView>
 #include <QVBoxLayout>
 #include <QDialogButtonBox>
@@ -15,6 +16,7 @@ FileBrowserDialog::FileBrowserDialog(const QString &rootPath, QWidget *parent)
     , m_view(new QTreeView(this))
     , m_thread(new QThread(this))
 {
+    LOG_INFO(QString("打开文件浏览对话框: %1").arg(rootPath));
     auto *buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
     buttons->setEnabled(false);
     connect(buttons, &QDialogButtonBox::accepted, this, &QDialog::accept);
@@ -26,6 +28,7 @@ FileBrowserDialog::FileBrowserDialog(const QString &rootPath, QWidget *parent)
     connect(m_thread, &QThread::finished, worker, &QObject::deleteLater);
     connect(worker, &SmbDirModelWorker::loaded, this,
             [this, buttons](QFileSystemModel *model, const QString &path) {
+                LOG_INFO(QString("已加载目录模型: %1").arg(path));
                 model->moveToThread(QApplication::instance()->thread());
                 m_model = model;
                 m_view->setModel(m_model);
@@ -35,6 +38,7 @@ FileBrowserDialog::FileBrowserDialog(const QString &rootPath, QWidget *parent)
                 } else {
                     QMessageBox::critical(this, tr("错误"),
                                           tr("目录不存在: %1").arg(path));
+                    LOG_WARNING(QString("目录不存在: %1").arg(path));
                     reject();
                 }
                 // 调整列宽
@@ -44,6 +48,7 @@ FileBrowserDialog::FileBrowserDialog(const QString &rootPath, QWidget *parent)
                     header->setSectionResizeMode(i, QHeaderView::ResizeToContents);
                 buttons->setEnabled(true);
                 m_thread->quit();
+                LOG_INFO("文件浏览模型加载完毕");
             });
     m_thread->start();
     QMetaObject::invokeMethod(worker, "load", Qt::QueuedConnection, Q_ARG(QString, rootPath));
@@ -58,6 +63,7 @@ FileBrowserDialog::FileBrowserDialog(const QString &rootPath, QWidget *parent)
 
 FileBrowserDialog::~FileBrowserDialog()
 {
+    LOG_INFO("销毁 FileBrowserDialog");
     if (m_thread->isRunning()) {
         m_thread->quit();
         m_thread->wait();
@@ -71,5 +77,6 @@ QStringList FileBrowserDialog::selectedPaths() const
     for (const QModelIndex &index : indexes) {
         paths << m_model->filePath(index);
     }
+    LOG_INFO(QString("选中文件数: %1").arg(paths.size()));
     return paths;
 }

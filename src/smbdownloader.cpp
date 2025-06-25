@@ -243,6 +243,9 @@ void SmbDownloader::updateSpeed()
                 info->lastSpeedUpdate = currentTime;
                 info->lastBytesReceived = task->downloadedSize();
                 task->setSpeed(static_cast<qint64>(info->smoothedSpeed));
+                LOG_INFO(QString("任务 %1 当前速度: %2 B/s")
+                             .arg(task->id())
+                             .arg(task->speed()));
             }
         }
     }

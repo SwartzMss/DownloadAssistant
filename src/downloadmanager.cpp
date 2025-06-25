@@ -542,10 +542,10 @@ void DownloadManager::onDownloadProgress(DownloadTask *task, qint64 bytesReceive
 
 void DownloadManager::processNextTask()
 {
-    LOG_DEBUG("处理下一个任务");
+    LOG_INFO("处理下一个任务");
     
     if (m_activeDownloadCount >= m_maxConcurrentDownloads) {
-        LOG_DEBUG("已达到最大并发数，跳过处理");
+        LOG_INFO("已达到最大并发数，跳过处理");
         return;
     }
     

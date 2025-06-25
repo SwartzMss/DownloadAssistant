@@ -14,7 +14,7 @@ DownloadTask::DownloadTask(QObject *parent)
     , m_speed(0)
     , m_supportsResume(false)
 {
-    LOG_DEBUG("创建新的下载任务");
+    LOG_INFO("创建新的下载任务");
     generateId();
 }
 
@@ -27,7 +27,7 @@ DownloadTask::DownloadTask(const QString &url, const QString &savePath, QObject 
 
 DownloadTask::~DownloadTask()
 {
-    LOG_DEBUG(QString("销毁下载任务 - ID: %1").arg(m_id));
+    LOG_INFO(QString("销毁下载任务 - ID: %1").arg(m_id));
 }
 
 void DownloadTask::setUrl(const QString &url)

@@ -3,10 +3,12 @@
 #include <QProgressBar>
 #include <QHBoxLayout>
 #include <QPushButton>
+#include "logger.h"
 
 TaskTableWidget::TaskTableWidget(QWidget *parent)
     : QTableWidget(parent)
 {
+    LOG_INFO("初始化 TaskTableWidget");
     setupTable();
 }
 
@@ -39,6 +41,7 @@ void TaskTableWidget::setupTable()
 
 void TaskTableWidget::addTask(DownloadTask *task)
 {
+    LOG_INFO(QString("向表格添加任务: %1").arg(task->id()));
     int row = rowCount();
     insertRow(row);
 
@@ -64,8 +67,10 @@ void TaskTableWidget::addTask(DownloadTask *task)
 void TaskTableWidget::removeTask(DownloadTask *task)
 {
     int row = findTaskRow(task);
-    if (row >= 0)
+    if (row >= 0) {
         removeRow(row);
+        LOG_INFO(QString("已从表格移除任务: %1").arg(task->id()));
+    }
 }
 
 int TaskTableWidget::findTaskRow(DownloadTask *task)
@@ -83,6 +88,7 @@ int TaskTableWidget::findTaskRow(DownloadTask *task)
 
 void TaskTableWidget::updateTask(DownloadTask *task)
 {
+    LOG_INFO(QString("更新任务行: %1").arg(task->id()));
     int row = findTaskRow(task);
     if (row < 0)
         return;
@@ -108,6 +114,7 @@ void TaskTableWidget::updateTask(DownloadTask *task)
 
 void TaskTableWidget::createOperationButtons(int row, DownloadTask *task)
 {
+    LOG_INFO(QString("创建操作按钮 - 任务ID: %1").arg(task->id()));
     QWidget *widget = new QWidget();
     QHBoxLayout *layout = new QHBoxLayout(widget);
     layout->setContentsMargins(2,2,2,2);
@@ -136,6 +143,8 @@ void TaskTableWidget::updateOperationButtons(int row, DownloadTask *task)
 {
     QWidget *widget = cellWidget(row, 5);
     if (!widget) return;
+
+    LOG_INFO(QString("更新操作按钮显示 - 任务ID: %1").arg(task->id()));
 
     QList<QPushButton*> buttons = widget->findChildren<QPushButton*>();
     if (buttons.size() < 4) return;
