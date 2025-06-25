@@ -633,10 +633,15 @@ void MainWindow::onBrowseSmbButtonClicked()
 
     if (paths.size() == 1) {
         QFileInfo info(paths.first());
-        ui->urlEdit->setText(paths.first());
         if (info.isDir()) {
             onDownloadDirectoryClicked(paths.first());
+        } else {
+            onDownloadFileClicked(paths.first());
         }
+
+        loadTasks();
+        updateStatusBar();
+        showInfo(tr("已添加下载任务"));
         return;
     }
 
