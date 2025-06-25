@@ -23,6 +23,7 @@
 #include <QFileInfo>
 #include <QDate>
 #include <QInputDialog>
+#include <QDesktopServices>
 
 static QString toUncPath(QString path)
 {
@@ -117,10 +118,20 @@ void MainWindow::setupUI()
     ui->completedTable->setContextMenuPolicy(Qt::CustomContextMenu);
     connect(ui->completedTable, &QTableWidget::customContextMenuRequested, this, [this](const QPoint &pos) {
         QMenu menu;
+        QAction *openDirAction = menu.addAction(tr("打开目录"));
         QAction *removeAction = menu.addAction(tr("删除选中"));
         QAction *clearAction = menu.addAction(tr("全部清空"));
         QAction *act = menu.exec(ui->completedTable->viewport()->mapToGlobal(pos));
-        if (act == removeAction) {
+        if (act == openDirAction) {
+            QList<QTableWidgetItem*> selected = ui->completedTable->selectedItems();
+            if (!selected.isEmpty()) {
+                int row = selected.first()->row();
+                QTableWidgetItem *pathItem = ui->completedTable->item(row, 1);
+                if (pathItem) {
+                    QDesktopServices::openUrl(QUrl::fromLocalFile(pathItem->text()));
+                }
+            }
+        } else if (act == removeAction) {
             QList<QTableWidgetItem*> selected = ui->completedTable->selectedItems();
             QSet<int> rows;
             for (QTableWidgetItem *item : selected) rows.insert(item->row());
