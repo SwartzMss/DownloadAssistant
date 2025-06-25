@@ -4,14 +4,24 @@
 #include <QVBoxLayout>
 #include <QDialogButtonBox>
 #include <QHeaderView>
+#include <QTimer>
 
 FileBrowserDialog::FileBrowserDialog(const QString &rootPath, QWidget *parent)
-    : QDialog(parent), m_model(new QFileSystemModel(this)), m_view(new QTreeView(this))
+    : QDialog(parent)
+    , m_model(new QFileSystemModel(this))
+    , m_view(new QTreeView(this))
 {
-    QModelIndex rootIndex = m_model->setRootPath(rootPath);
+    // 先设置一个空的根路径，避免阻塞对话框显示
+    m_model->setRootPath(QString());
     m_view->setModel(m_model);
-    if (rootIndex.isValid())
-        m_view->setRootIndex(rootIndex);
+
+    // 延迟加载实际的远程根目录，以减少界面卡顿
+    QTimer::singleShot(0, this, [this, rootPath] {
+        QModelIndex rootIndex = m_model->setRootPath(rootPath);
+        if (rootIndex.isValid())
+            m_view->setRootIndex(rootIndex);
+    });
+
     m_view->setSelectionMode(QAbstractItemView::ExtendedSelection);
 
     auto *buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
