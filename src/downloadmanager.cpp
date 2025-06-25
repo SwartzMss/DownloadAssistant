@@ -198,8 +198,9 @@ void DownloadManager::pauseTask(const QString &taskId)
     LOG_INFO(QString("任务已暂停 - ID: %1, 当前活跃下载数: %2").arg(taskId).arg(m_activeDownloadCount));
     
     m_smbDownloader->pauseDownload(task);
-    
+
     processNextTask();
+    saveTasks();
 }
 
 void DownloadManager::resumeTask(const QString &taskId)
@@ -229,6 +230,7 @@ void DownloadManager::resumeTask(const QString &taskId)
 
     // 调用下载器恢复任务，状态将在下载器中更新
     m_smbDownloader->resumeDownload(task);
+    saveTasks();
 }
 
 void DownloadManager::cancelTask(const QString &taskId)
