@@ -18,6 +18,7 @@ DownloadAssistant 是一款基于 **Qt** 的 Windows 下载工具，具备断点
 运行 `DownloadAssistant.exe` 后，在界面中输入下载地址和本地保存路径，即可创建并启动下载任务。任务可随时暂停、继续或取消，并可批量操作。
 
 程序运行目录将自动生成 `config.ini` 与 `logs/downloadassistant.log`，分别用于保存设置和输出日志。
+程序还会记住上一次输入的下载地址，下次启动时自动填入。
 
 ## 开发计划
 

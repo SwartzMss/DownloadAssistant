@@ -59,9 +59,12 @@ MainWindow::MainWindow(QWidget *parent)
     
     ui->setupUi(this);
 
-    
+
     setupUI();
     setupConnections();
+
+    // 从配置中恢复上一次输入的下载地址
+    ui->urlEdit->setText(m_settings->value("lastUrl").toString());
     
     // 设置默认保存路径
     ui->savePathEdit->setText(m_downloadManager->getDefaultSavePath());
@@ -94,6 +97,9 @@ MainWindow::MainWindow(QWidget *parent)
 
 MainWindow::~MainWindow()
 {
+    // 保存最后一次输入的下载地址
+    m_settings->setValue("lastUrl", ui->urlEdit->text());
+    m_settings->sync();
     delete ui;
 }
 
