@@ -204,7 +204,6 @@ void MainWindow::setupConnections()
 {
     // 连接 UI 信号
     connect(ui->browseButton, &QPushButton::clicked, this, &MainWindow::onBrowseClicked);
-    connect(ui->clearButton, &QPushButton::clicked, this, &MainWindow::onClearClicked);
     connect(ui->addTaskButton, &QPushButton::clicked, this, &MainWindow::onAddTaskButtonClicked);
     connect(ui->startAllButton, &QPushButton::clicked, this, &MainWindow::onStartAllClicked);
     connect(ui->pauseAllButton, &QPushButton::clicked, this, &MainWindow::onPauseAllClicked);
@@ -248,13 +247,6 @@ void MainWindow::onBrowseClicked()
         m_downloadManager->setDefaultSavePath(dir);
         LOG_INFO(QString("选择保存路径: %1").arg(dir));
     }
-}
-
-void MainWindow::onClearClicked()
-{
-    LOG_INFO("清空输入");
-    ui->savePathEdit->setText(m_downloadManager->getDefaultSavePath());
-    // 已移除 remoteFileTable 相关代码
 }
 
 void MainWindow::onStartAllClicked()

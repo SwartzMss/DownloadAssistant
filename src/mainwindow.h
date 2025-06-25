@@ -62,7 +62,6 @@ private:
     void setupConnections();
     void loadTasks();
     void updateStatusBar();
-    void onClearClicked();
     void onStartAllClicked();
     void onPauseAllClicked();
     void onRemoveClicked();
