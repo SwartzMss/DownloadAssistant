@@ -17,7 +17,6 @@ DownloadManager::DownloadManager(QObject *parent)
     : QObject(parent)
     , m_smbDownloader(new SmbDownloader(this))
     , m_configPath(QCoreApplication::applicationDirPath() + "/config.json")
-    , m_maxConcurrentDownloads(5)
     , m_activeDownloadCount(0)
     , m_lastUrl("")
 {
@@ -33,7 +32,6 @@ DownloadManager::DownloadManager(QObject *parent)
     loadFromJson();
     
     LOG_INFO(QString("默认保存路径: %1").arg(m_defaultSavePath));
-    LOG_INFO(QString("最大并发下载数: %1").arg(m_maxConcurrentDownloads));
     
     // 连接下载器信号
     connect(m_smbDownloader, &SmbDownloader::downloadStarted,
@@ -163,12 +161,6 @@ void DownloadManager::startTask(const QString &taskId)
         return;
     }
     
-    if (m_activeDownloadCount >= m_maxConcurrentDownloads) {
-        LOG_INFO(QString("达到最大并发数，任务进入队列 - ID: %1").arg(taskId));
-        task->setStatus(DownloadTask::Queued);
-        return;
-    }
-    
     m_activeDownloadCount++;
     task->setStatus(DownloadTask::Downloading);
     
@@ -216,12 +208,6 @@ void DownloadManager::resumeTask(const QString &taskId)
     DownloadTask *task = m_tasks[taskId];
     if (task->status() != DownloadTask::Paused) {
         LOG_WARNING(QString("任务不在暂停状态 - ID: %1").arg(taskId));
-        return;
-    }
-    
-    if (m_activeDownloadCount >= m_maxConcurrentDownloads) {
-        LOG_INFO(QString("达到最大并发数，任务进入队列 - ID: %1").arg(taskId));
-        task->setStatus(DownloadTask::Queued);
         return;
     }
     
@@ -348,22 +334,6 @@ void DownloadManager::setDefaultSavePath(const QString &path)
     saveTasks();
 }
 
-int DownloadManager::getMaxConcurrentDownloads() const
-{
-    return m_maxConcurrentDownloads;
-}
-
-void DownloadManager::setMaxConcurrentDownloads(int max)
-{
-    if (max < 3) {
-        max = 3;
-    } else if (max > 8) {
-        max = 8;
-    }
-    m_maxConcurrentDownloads = max;
-    saveTasks();
-}
-
 QString DownloadManager::getLastUrl() const
 {
     return m_lastUrl;
@@ -398,7 +368,6 @@ void DownloadManager::saveTasks()
     
     json["tasks"] = tasksArray;
     json["defaultSavePath"] = m_defaultSavePath;
-    json["maxConcurrentDownloads"] = m_maxConcurrentDownloads;
     json["lastUrl"] = m_lastUrl;
     
     QFile file(m_configPath);
@@ -430,13 +399,6 @@ void DownloadManager::loadTasks()
         QJsonObject json = jsonDoc.object();
         QJsonArray tasksArray = json["tasks"].toArray();
         m_defaultSavePath = json["defaultSavePath"].toString();
-        int max = json["maxConcurrentDownloads"].toInt(m_maxConcurrentDownloads);
-        if (max < 3) {
-            max = 3;
-        } else if (max > 8) {
-            max = 8;
-        }
-        m_maxConcurrentDownloads = max;
         m_lastUrl = json["lastUrl"].toString();
         for (const QJsonValue &value : tasksArray) {
             QJsonObject taskObject = value.toObject();
@@ -543,11 +505,6 @@ void DownloadManager::onDownloadProgress(DownloadTask *task, qint64 bytesReceive
 void DownloadManager::processNextTask()
 {
     LOG_DEBUG("处理下一个任务");
-    
-    if (m_activeDownloadCount >= m_maxConcurrentDownloads) {
-        LOG_DEBUG("已达到最大并发数，跳过处理");
-        return;
-    }
     
     for (DownloadTask *task : m_tasks) {
         if (task->status() == DownloadTask::Pending ||
