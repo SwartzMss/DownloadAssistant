@@ -4,11 +4,13 @@
 #include <QVBoxLayout>
 #include <QDialogButtonBox>
 
-FileBrowserDialog::FileBrowserDialog(QWidget *parent)
+FileBrowserDialog::FileBrowserDialog(const QString &rootPath, QWidget *parent)
     : QDialog(parent), m_model(new QFileSystemModel(this)), m_view(new QTreeView(this))
 {
-    m_model->setRootPath(QString());
+    QModelIndex rootIndex = m_model->setRootPath(rootPath);
     m_view->setModel(m_model);
+    if (rootIndex.isValid())
+        m_view->setRootIndex(rootIndex);
     m_view->setSelectionMode(QAbstractItemView::ExtendedSelection);
 
     auto *buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);

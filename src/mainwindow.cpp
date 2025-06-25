@@ -618,7 +618,12 @@ void MainWindow::closeEvent(QCloseEvent *event)
 
 void MainWindow::onBrowseSmbButtonClicked()
 {
-    FileBrowserDialog dialog(this);
+    QString url = ui->urlEdit->text().trimmed();
+    if (url.isEmpty()) {
+        showWarning(tr("请输入下载地址"));
+        return;
+    }
+    FileBrowserDialog dialog(toUncPath(url), this);
     if (dialog.exec() != QDialog::Accepted)
         return;
 

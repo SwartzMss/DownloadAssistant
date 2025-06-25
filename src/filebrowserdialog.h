@@ -10,7 +10,7 @@ class FileBrowserDialog : public QDialog
 {
     Q_OBJECT
 public:
-    explicit FileBrowserDialog(QWidget *parent = nullptr);
+    explicit FileBrowserDialog(const QString &rootPath = QString(), QWidget *parent = nullptr);
     QStringList selectedPaths() const;
 
 private:
