@@ -5,6 +5,8 @@
 
 class QFileSystemModel;
 class QTreeView;
+// SmbDirModelWorker was removed for now. It may be reintroduced
+// to asynchronously populate directory models over SMB.
 
 class FileBrowserDialog : public QDialog
 {
