@@ -23,7 +23,8 @@ SOURCES += \
     src/smbdownloader.cpp \
     src/smbworker.cpp \
     src/logger.cpp \
-    src/tasktablewidget.cpp
+    src/tasktablewidget.cpp \
+    src/filebrowserdialog.cpp
 
 HEADERS += \
     src/mainwindow.h \
@@ -32,7 +33,8 @@ HEADERS += \
     src/smbdownloader.h \
     src/smbworker.h \
     src/logger.h \
-    src/tasktablewidget.h
+    src/tasktablewidget.h \
+    src/filebrowserdialog.h
 
 FORMS += \
     src/mainwindow.ui
