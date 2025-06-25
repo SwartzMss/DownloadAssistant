@@ -2,9 +2,6 @@
 #define FILEBROWSERDIALOG_H
 
 #include <QDialog>
-#include <QThread>
-
-class SmbDirModelWorker;
 
 class QFileSystemModel;
 class QTreeView;
@@ -20,7 +17,6 @@ public:
 private:
     QFileSystemModel *m_model;
     QTreeView *m_view;
-    QThread *m_thread;
 };
 
 #endif // FILEBROWSERDIALOG_H
