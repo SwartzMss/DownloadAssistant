@@ -52,8 +52,10 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: DownloadAssistant
-        path: release.zip
-        retention-days: 30 
+        path: |
+          release.zip
+          release/DownloadAssistant.exe
+        retention-days: 30
 
     - name: Get existing Release upload URL
       id: get_release
@@ -86,5 +88,6 @@ jobs:
       with:
         files: |
           release.zip
+          release/DownloadAssistant.exe
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
