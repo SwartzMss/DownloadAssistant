@@ -95,7 +95,7 @@ void SmbWorker::run()
     LOG_INFO(QString("SmbWorker: remoteFile.size() = %1").arg(total));
     emit progress(m_offset, total);
 
-    const int bufSize = 4096;
+    const int bufSize = 65536;
     char buf[bufSize];
     qint64 received = m_offset;
 
@@ -104,9 +104,7 @@ void SmbWorker::run()
             msleep(100);
             continue;
         }
-        LOG_INFO("SmbWorker: 读取数据前");
         qint64 n = remoteFile.read(buf, bufSize);
-        LOG_INFO(QString("SmbWorker: 读取数据 n = %1").arg(n));
         if (n < 0) {
             remoteFile.close();
             file.close();
