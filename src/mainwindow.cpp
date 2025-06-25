@@ -246,7 +246,7 @@ void MainWindow::onTaskStarted(const QString &taskId)
 {
     DownloadTask *task = m_downloadManager->getTask(taskId);
     if (task) {
-        // ui->taskTable->updateTask(task); // 已注释
+        ui->taskTable->updateTask(task);
         LOG_INFO(QString("任务开始 - ID: %1").arg(taskId));
     }
 }
@@ -255,7 +255,7 @@ void MainWindow::onTaskPaused(const QString &taskId)
 {
     DownloadTask *task = m_downloadManager->getTask(taskId);
     if (task) {
-        // ui->taskTable->updateTask(task); // 已注释
+        ui->taskTable->updateTask(task);
         LOG_INFO(QString("任务暂停 - ID: %1").arg(taskId));
     }
 }
@@ -264,7 +264,7 @@ void MainWindow::onTaskResumed(const QString &taskId)
 {
     DownloadTask *task = m_downloadManager->getTask(taskId);
     if (task) {
-        // ui->taskTable->updateTask(task); // 已注释
+        ui->taskTable->updateTask(task);
         LOG_INFO(QString("任务恢复 - ID: %1").arg(taskId));
     }
 }
@@ -273,7 +273,7 @@ void MainWindow::onTaskCompleted(const QString &taskId)
 {
     DownloadTask *task = m_downloadManager->getTask(taskId);
     if (task) {
-        // ui->taskTable->updateTask(task); // 已注释
+        ui->taskTable->updateTask(task);
         LOG_INFO(QString("任务完成 - ID: %1").arg(taskId));
         showInfo(tr("下载完成：%1").arg(task->fileName()));
         loadTasks();
@@ -284,7 +284,7 @@ void MainWindow::onTaskFailed(const QString &taskId, const QString &error)
 {
     DownloadTask *task = m_downloadManager->getTask(taskId);
     if (task) {
-        // ui->taskTable->updateTask(task); // 已注释
+        ui->taskTable->updateTask(task);
         LOG_WARNING(QString("任务失败 - ID: %1, 错误: %2").arg(taskId).arg(error));
         showError(tr("下载失败：%1 - %2").arg(task->fileName()).arg(error));
         loadTasks();
@@ -295,7 +295,7 @@ void MainWindow::onTaskCancelled(const QString &taskId)
 {
     DownloadTask *task = m_downloadManager->getTask(taskId);
     if (task) {
-        // ui->taskTable->updateTask(task); // 已注释
+        ui->taskTable->updateTask(task);
         LOG_INFO(QString("任务取消 - ID: %1").arg(taskId));
         loadTasks();
     }
@@ -315,7 +315,7 @@ void MainWindow::onUpdateTimer()
         if (item) {
             DownloadTask *task = static_cast<DownloadTask*>(item->data(Qt::UserRole).value<void*>());
             if (task) {
-                // ui->taskTable->updateTask(task); // 已注释
+                ui->taskTable->updateTask(task);
             }
         }
     }
