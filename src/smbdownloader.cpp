@@ -3,6 +3,7 @@
 #include "smbworker.h"
 #include <QFileInfo>
 #include <QDir>
+#include <QFile>
 #include <QStandardPaths>
 #include <QMessageBox>
 #include <QApplication>
@@ -152,7 +153,18 @@ void SmbDownloader::cancelDownload(DownloadTask *task)
         info->worker->requestCancel();
         info->worker->wait();
     }
-    
+
+    // 删除已下载的部分文件
+    QUrl url(task->url());
+    QString filePath = task->savePath();
+    if (!filePath.endsWith('/') && !filePath.endsWith('\\'))
+        filePath += '/';
+    QString fileName = url.fileName();
+    if (fileName.isEmpty())
+        fileName = "downloaded_file";
+    filePath += fileName;
+    QFile::remove(filePath);
+
     task->setStatus(DownloadTask::Cancelled);
     cleanupDownload(task);
     
