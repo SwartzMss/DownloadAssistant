@@ -3,6 +3,7 @@
 #include <QTreeView>
 #include <QVBoxLayout>
 #include <QDialogButtonBox>
+#include <QHeaderView>
 
 FileBrowserDialog::FileBrowserDialog(const QString &rootPath, QWidget *parent)
     : QDialog(parent), m_model(new QFileSystemModel(this)), m_view(new QTreeView(this))
@@ -22,6 +23,13 @@ FileBrowserDialog::FileBrowserDialog(const QString &rootPath, QWidget *parent)
     layout->addWidget(buttons);
     setLayout(layout);
     setWindowTitle(tr("选择远程文件或目录"));
+    resize(800, 600);
+
+    // Optimize column sizes so file names are readable
+    QHeaderView *header = m_view->header();
+    header->setSectionResizeMode(0, QHeaderView::Stretch);
+    for (int i = 1; i < m_model->columnCount(); ++i)
+        header->setSectionResizeMode(i, QHeaderView::ResizeToContents);
 }
 
 QStringList FileBrowserDialog::selectedPaths() const
