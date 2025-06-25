@@ -47,8 +47,6 @@ public:
     // 设置
     QString getDefaultSavePath() const;
     void setDefaultSavePath(const QString &path);
-    int getMaxConcurrentDownloads() const;
-    void setMaxConcurrentDownloads(int max);
 
     // 最近一次输入的地址
     QString getLastUrl() const;
@@ -88,9 +86,8 @@ private slots:
 private:
     QMap<QString, DownloadTask*> m_tasks;
     SmbDownloader *m_smbDownloader;
-    
+
     QString m_defaultSavePath;
-    int m_maxConcurrentDownloads;
     int m_activeDownloadCount;
     QString m_lastUrl;
     

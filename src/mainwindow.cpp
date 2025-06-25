@@ -67,9 +67,6 @@ MainWindow::MainWindow(QWidget *parent)
     
     // 设置默认保存路径
     ui->savePathEdit->setText(m_downloadManager->getDefaultSavePath());
-    ui->concurrencySpinBox->setValue(m_downloadManager->getMaxConcurrentDownloads());
-    connect(ui->concurrencySpinBox, QOverload<int>::of(&QSpinBox::valueChanged),
-            m_downloadManager, &DownloadManager::setMaxConcurrentDownloads);
     
     // 启动更新定时器
     m_updateTimer->setInterval(1000); // 每秒更新一次
