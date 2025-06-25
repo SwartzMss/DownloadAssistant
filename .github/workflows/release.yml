@@ -42,6 +42,13 @@ jobs:
       run: |
         windeployqt --release --qmldir . release\DownloadAssistant.exe
 
+    - name: Clean up release directory
+      shell: cmd
+      run: |
+        del /S /Q release\*.cpp 2>nul || echo "No cpp files to delete"
+        del /S /Q release\*.obj 2>nul || echo "No obj files to delete"
+        del /S /Q release\*.h   2>nul || echo "No header files to delete"
+
         
     - name: Compress Release
       shell: cmd
