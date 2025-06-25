@@ -26,7 +26,6 @@ private slots:
     // UI 事件处理
     void onBrowseClicked();
     void onBrowseSmbButtonClicked();
-    void onAddTaskButtonClicked();
     
     // 下载管理器事件
     void onTaskAdded(const QString &taskId);
