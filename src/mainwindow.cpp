@@ -617,10 +617,39 @@ void MainWindow::closeEvent(QCloseEvent *event)
 
 void MainWindow::onBrowseSmbButtonClicked()
 {
-    // 这里只做本地目录选择示例，后续可集成远程SMB浏览
-    QString file = QFileDialog::getOpenFileName(this, tr("选择远程文件"));
-    if (!file.isEmpty()) {
-        ui->urlEdit->setText(file);
+    QMessageBox msgBox(this);
+    msgBox.setWindowTitle(tr("选择类型"));
+    msgBox.setText(tr("请选择要浏览的类型"));
+    QPushButton *fileBtn = msgBox.addButton(tr("文件"), QMessageBox::AcceptRole);
+    QPushButton *dirBtn = msgBox.addButton(tr("目录"), QMessageBox::AcceptRole);
+    msgBox.addButton(QMessageBox::Cancel);
+    msgBox.exec();
+
+    if (msgBox.clickedButton() == fileBtn) {
+        QStringList files = QFileDialog::getOpenFileNames(this, tr("选择远程文件"));
+        if (files.isEmpty())
+            return;
+        if (files.size() == 1) {
+            ui->urlEdit->setText(files.first());
+        } else {
+            QString savePath = ui->savePathEdit->text().trimmed();
+            if (savePath.isEmpty())
+                savePath = m_downloadManager->getDefaultSavePath();
+            savePath = buildFinalSavePath(savePath);
+            for (const QString &f : files) {
+                QString taskId = m_downloadManager->addTask(f, savePath);
+                m_downloadManager->startTask(taskId);
+            }
+            loadTasks();
+            updateStatusBar();
+            showInfo(tr("已添加下载任务"));
+        }
+    } else if (msgBox.clickedButton() == dirBtn) {
+        QString dir = QFileDialog::getExistingDirectory(this, tr("选择远程目录"));
+        if (!dir.isEmpty()) {
+            ui->urlEdit->setText(dir);
+            onDownloadDirectoryClicked(dir);
+        }
     }
 }
 
