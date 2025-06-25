@@ -7,6 +7,7 @@
 #include <QTimer>
 #include <QMessageBox>
 #include <QApplication>
+#include <QAbstractItemView>
 
 FileBrowserDialog::FileBrowserDialog(const QString &rootPath, QWidget *parent)
     : QDialog(parent)
@@ -20,6 +21,7 @@ FileBrowserDialog::FileBrowserDialog(const QString &rootPath, QWidget *parent)
 
     m_model->setRootPath(rootPath);
     m_view->setModel(m_model);
+    m_view->setSelectionMode(QAbstractItemView::ExtendedSelection);
     QModelIndex rootIndex = m_model->index(rootPath);
     if (rootIndex.isValid()) {
         m_view->setRootIndex(rootIndex);
