@@ -482,6 +482,7 @@ void DownloadManager::onDownloadCancelled(DownloadTask *task)
     task->setErrorMessage(tr("用户取消"));
     emit taskCancelled(task->id());
     processNextTask();
+    saveTasks();
 }
 
 void DownloadManager::onDownloadCompleted(DownloadTask *task)
@@ -491,6 +492,7 @@ void DownloadManager::onDownloadCompleted(DownloadTask *task)
     task->setStatus(DownloadTask::Completed);
     emit taskCompleted(task->id());
     processNextTask();
+    saveTasks();
 }
 
 void DownloadManager::onDownloadFailed(DownloadTask *task, const QString &error)
@@ -501,6 +503,7 @@ void DownloadManager::onDownloadFailed(DownloadTask *task, const QString &error)
     task->setErrorMessage(error);
     emit taskFailed(task->id(), error);
     processNextTask();
+    saveTasks();
 }
 
 void DownloadManager::onDownloadProgress(DownloadTask *task, qint64 bytesReceived, qint64 bytesTotal)
