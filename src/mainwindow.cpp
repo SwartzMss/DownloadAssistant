@@ -285,7 +285,8 @@ void MainWindow::onTaskRemoved(const QString &taskId)
 {
     // 通过 taskId 查找并删除对应的行
     for (int row = 0; row < ui->taskTable->rowCount(); ++row) {
-        QTableWidgetItem *item = ui->taskTable->item(row, 1); // 文件名列
+        // 文件名列位于第 0 列
+        QTableWidgetItem *item = ui->taskTable->item(row, 0);
         if (item) {
             DownloadTask *task = static_cast<DownloadTask*>(item->data(Qt::UserRole).value<void*>());
             if (task && task->id() == taskId) {
