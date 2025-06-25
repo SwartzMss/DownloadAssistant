@@ -152,6 +152,12 @@ void TaskTableWidget::updateOperationButtons(int row, DownloadTask *task)
         resumeButton->setVisible(false);
         cancelButton->setVisible(true);
         break;
+    case DownloadTask::Queued:
+        startButton->setVisible(false);
+        pauseButton->setVisible(false);
+        resumeButton->setVisible(false);
+        cancelButton->setVisible(true);
+        break;
     case DownloadTask::Downloading:
         startButton->setVisible(false);
         pauseButton->setVisible(true);
