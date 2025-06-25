@@ -23,11 +23,17 @@ void TaskTableWidget::setupTable()
 
     horizontalHeader()->setStretchLastSection(false);
     horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);          // 文件名
-    horizontalHeader()->setSectionResizeMode(1, QHeaderView::ResizeToContents); // 进度
-    horizontalHeader()->setSectionResizeMode(2, QHeaderView::ResizeToContents); // 速度
-    horizontalHeader()->setSectionResizeMode(3, QHeaderView::ResizeToContents); // 大小
-    horizontalHeader()->setSectionResizeMode(4, QHeaderView::ResizeToContents); // 剩余时间
-    horizontalHeader()->setSectionResizeMode(5, QHeaderView::ResizeToContents); // 操作
+    horizontalHeader()->setSectionResizeMode(1, QHeaderView::Fixed); // 进度
+    horizontalHeader()->setSectionResizeMode(2, QHeaderView::Fixed); // 速度
+    horizontalHeader()->setSectionResizeMode(3, QHeaderView::Fixed); // 大小
+    horizontalHeader()->setSectionResizeMode(4, QHeaderView::Fixed); // 剩余时间
+    horizontalHeader()->setSectionResizeMode(5, QHeaderView::Fixed); // 操作
+
+    setColumnWidth(1, 90); // 进度
+    setColumnWidth(2, 90); // 速度
+    setColumnWidth(3, 90); // 大小
+    setColumnWidth(4, 100); // 剩余时间
+    setColumnWidth(5, 120); // 操作
 
     // Display long file names with ellipsis in the middle
     setTextElideMode(Qt::ElideMiddle);

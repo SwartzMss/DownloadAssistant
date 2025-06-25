@@ -79,7 +79,7 @@ void SmbWorker::run()
     LOG_INFO(QString("SmbWorker: remoteFile.size() = %1").arg(total));
     emit progress(m_offset, total);
 
-    const int bufSize = 65536;
+    const int bufSize = 524288; // 512KB
     char buf[bufSize];
     qint64 received = m_offset;
 
