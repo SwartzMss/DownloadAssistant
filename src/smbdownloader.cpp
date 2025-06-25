@@ -132,10 +132,12 @@ void SmbDownloader::resumeDownload(DownloadTask *task)
     DownloadInfo *info = findDownloadInfo(task);
     if (info && info->worker) {
         info->worker->resumeWork();
+        task->setStatus(DownloadTask::Downloading);
+        emit downloadResumed(task);
     } else {
+        // 若未找到下载信息，重新开始下载
         startDownload(task);
     }
-    emit downloadResumed(task);
 }
 
 void SmbDownloader::cancelDownload(DownloadTask *task)
