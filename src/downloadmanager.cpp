@@ -224,10 +224,10 @@ void DownloadManager::resumeTask(const QString &taskId)
     }
     
     m_activeDownloadCount++;
-    task->setStatus(DownloadTask::Downloading);
-    
+
     LOG_INFO(QString("任务恢复下载 - ID: %1, 当前活跃下载数: %2").arg(taskId).arg(m_activeDownloadCount));
-    
+
+    // 调用下载器恢复任务，状态将在下载器中更新
     m_smbDownloader->resumeDownload(task);
 }
 
