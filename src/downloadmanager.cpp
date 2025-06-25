@@ -417,7 +417,13 @@ void DownloadManager::loadTasks()
         QJsonObject json = jsonDoc.object();
         QJsonArray tasksArray = json["tasks"].toArray();
         m_defaultSavePath = json["defaultSavePath"].toString();
-        setMaxConcurrentDownloads(json["maxConcurrentDownloads"].toInt());
+        int max = json["maxConcurrentDownloads"].toInt(m_maxConcurrentDownloads);
+        if (max < 3) {
+            max = 3;
+        } else if (max > 8) {
+            max = 8;
+        }
+        m_maxConcurrentDownloads = max;
         for (const QJsonValue &value : tasksArray) {
             QJsonObject taskObject = value.toObject();
             QString id = taskObject["id"].toString();
