@@ -426,16 +426,27 @@ QString MainWindow::formatBytes(qint64 bytes) const
 
 QString MainWindow::buildFinalSavePath(const QString &basePath) const
 {
-    QString dateDir = QDate::currentDate().toString("MM_dd");
-    QString result = QDir(basePath).filePath(dateDir);
+    QString dateDirName = QDate::currentDate().toString("MM_dd");
+    QDir baseDir(basePath);
+    if (!baseDir.exists()) {
+        QDir().mkpath(basePath);
+    }
+
+    QString dateDirPath = baseDir.filePath(dateDirName);
+    if (!QDir(dateDirPath).exists()) {
+        QDir().mkpath(dateDirPath);
+    }
 
     QString sub = ui->subDirEdit->text().trimmed();
     if (!sub.isEmpty()) {
-        result = QDir(result).filePath(sub);
+        QString subDirPath = QDir(dateDirPath).filePath(sub);
+        if (!QDir(subDirPath).exists()) {
+            QDir().mkpath(subDirPath);
+        }
+        return subDirPath;
     }
 
-    QDir().mkpath(result);
-    return result;
+    return dateDirPath;
 }
 
 void MainWindow::fetchSmbFileList(const QString &url)
