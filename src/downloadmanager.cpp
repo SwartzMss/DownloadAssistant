@@ -17,7 +17,7 @@ DownloadManager::DownloadManager(QObject *parent)
     : QObject(parent)
     , m_smbDownloader(new SmbDownloader(this))
     , m_configPath(QCoreApplication::applicationDirPath() + "/config.json")
-    , m_maxConcurrentDownloads(3)
+    , m_maxConcurrentDownloads(5)
     , m_activeDownloadCount(0)
 {
     LOG_INFO("DownloadManager 初始化开始");
@@ -352,6 +352,11 @@ int DownloadManager::getMaxConcurrentDownloads() const
 
 void DownloadManager::setMaxConcurrentDownloads(int max)
 {
+    if (max < 3) {
+        max = 3;
+    } else if (max > 8) {
+        max = 8;
+    }
     m_maxConcurrentDownloads = max;
     saveTasks();
 }
@@ -410,7 +415,7 @@ void DownloadManager::loadTasks()
         QJsonObject json = jsonDoc.object();
         QJsonArray tasksArray = json["tasks"].toArray();
         m_defaultSavePath = json["defaultSavePath"].toString();
-        m_maxConcurrentDownloads = json["maxConcurrentDownloads"].toInt();
+        setMaxConcurrentDownloads(json["maxConcurrentDownloads"].toInt());
         for (const QJsonValue &value : tasksArray) {
             QJsonObject taskObject = value.toObject();
             QString id = taskObject["id"].toString();
