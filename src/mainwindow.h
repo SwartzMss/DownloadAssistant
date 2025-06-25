@@ -73,6 +73,8 @@ private:
     void fetchSmbFileList(const QString &url);
     void downloadDirectoryRecursive(const QString &dirUrl, const QString &localPath);
 
+    QString buildFinalSavePath(const QString &basePath) const;
+
     void createTrayIcon();
     void createTrayMenu();
 

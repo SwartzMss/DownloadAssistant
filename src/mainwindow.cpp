@@ -19,6 +19,9 @@
 #include <QTableWidgetItem>
 #include <QHeaderView>
 #include <QUrl>
+#include <QDir>
+#include <QFileInfo>
+#include <QDate>
 #include <QInputDialog>
 
 static QString toUncPath(QString path)
@@ -421,6 +424,20 @@ QString MainWindow::formatBytes(qint64 bytes) const
     }
 }
 
+QString MainWindow::buildFinalSavePath(const QString &basePath) const
+{
+    QString dateDir = QDate::currentDate().toString("MM_dd");
+    QString result = QDir(basePath).filePath(dateDir);
+
+    QString sub = ui->subDirEdit->text().trimmed();
+    if (!sub.isEmpty()) {
+        result = QDir(result).filePath(sub);
+    }
+
+    QDir().mkpath(result);
+    return result;
+}
+
 void MainWindow::fetchSmbFileList(const QString &url)
 {
     // 这里原本有 remoteFileTable 的相关操作，已移除
@@ -435,6 +452,8 @@ void MainWindow::onDownloadFileClicked(const QString &fileUrl)
     if (savePath.isEmpty())
         savePath = m_downloadManager->getDefaultSavePath();
 
+    savePath = buildFinalSavePath(savePath);
+
     // 添加任务后立即启动下载，避免用户还需手动点击开始
     QString taskId = m_downloadManager->addTask(fileUrl, savePath);
     m_downloadManager->startTask(taskId);
@@ -447,6 +466,8 @@ void MainWindow::onDownloadDirectoryClicked(const QString &dirUrl)
     QString savePath = ui->savePathEdit->text().trimmed();
     if (savePath.isEmpty())
         savePath = m_downloadManager->getDefaultSavePath();
+
+    savePath = buildFinalSavePath(savePath);
 
     QString dirName = QUrl(dirUrl).fileName();
     if (dirName.isEmpty()) {
@@ -592,6 +613,7 @@ void MainWindow::onAddTaskButtonClicked()
     if (savePath.isEmpty()) {
         savePath = m_downloadManager->getDefaultSavePath();
     }
+    savePath = buildFinalSavePath(savePath);
     QString taskId = m_downloadManager->addTask(url, savePath);
     m_downloadManager->startTask(taskId);
     // 立即刷新表格

@@ -74,7 +74,21 @@
              </item>
             </layout>
            </item>
-           <item row="2" column="0" colspan="2">
+           <item row="2" column="0">
+            <widget class="QLabel" name="label_sub">
+             <property name="text">
+              <string>子目录：</string>
+             </property>
+            </widget>
+           </item>
+           <item row="2" column="1">
+            <widget class="QLineEdit" name="subDirEdit">
+             <property name="placeholderText">
+              <string>可选，存放在日期目录下</string>
+             </property>
+            </widget>
+           </item>
+           <item row="3" column="0" colspan="2">
             <layout class="QHBoxLayout" name="horizontalLayout_2">
              <item>
               <widget class="QPushButton" name="addTaskButton">
