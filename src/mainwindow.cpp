@@ -146,6 +146,58 @@ void MainWindow::setupUI()
             loadTasks();
         }
     });
+
+    // 初始化失败任务表格
+    ui->failedTable->setColumnCount(3);
+    ui->failedTable->setHorizontalHeaderLabels({tr("文件名"), tr("文件路径"), tr("原因")});
+    ui->failedTable->setSelectionBehavior(QAbstractItemView::SelectRows);
+    ui->failedTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    ui->failedTable->setAlternatingRowColors(true);
+    ui->failedTable->horizontalHeader()->setStretchLastSection(false);
+    ui->failedTable->horizontalHeader()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
+    ui->failedTable->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Stretch);
+    ui->failedTable->horizontalHeader()->setSectionResizeMode(2, QHeaderView::ResizeToContents);
+
+    ui->failedTable->setTextElideMode(Qt::ElideMiddle);
+    ui->failedTable->setWordWrap(false);
+    ui->failedTable->horizontalHeader()->setMaximumSectionSize(400);
+    // 右键菜单
+    ui->failedTable->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(ui->failedTable, &QTableWidget::customContextMenuRequested, this, [this](const QPoint &pos) {
+        QMenu menu;
+        QAction *removeAction = menu.addAction(tr("删除选中"));
+        QAction *clearAction = menu.addAction(tr("全部清空"));
+        QAction *act = menu.exec(ui->failedTable->viewport()->mapToGlobal(pos));
+        if (act == removeAction) {
+            QList<QTableWidgetItem*> selected = ui->failedTable->selectedItems();
+            QSet<int> rows;
+            for (QTableWidgetItem *item : selected) rows.insert(item->row());
+            QList<int> rowList = rows.values();
+            std::sort(rowList.begin(), rowList.end(), std::greater<int>());
+            for (int row : rowList) {
+                QTableWidgetItem *nameItem = ui->failedTable->item(row, 0);
+                QTableWidgetItem *pathItem = ui->failedTable->item(row, 1);
+                if (nameItem && pathItem) {
+                    QString fileName = nameItem->text();
+                    QString savePath = pathItem->text();
+                    QList<DownloadTask*> failedTasks = m_downloadManager->getFailedTasks();
+                    for (DownloadTask *task : failedTasks) {
+                        if (task->fileName() == fileName && task->savePath() == savePath) {
+                            m_downloadManager->removeTask(task->id());
+                            break;
+                        }
+                    }
+                }
+            }
+            loadTasks();
+        } else if (act == clearAction) {
+            QList<DownloadTask*> failedTasks = m_downloadManager->getFailedTasks();
+            for (DownloadTask *task : failedTasks) {
+                m_downloadManager->removeTask(task->id());
+            }
+            loadTasks();
+        }
+    });
 }
 
 void MainWindow::setupConnections()
@@ -330,11 +382,13 @@ void MainWindow::updateStatusBar()
     QList<DownloadTask*> allTasks = m_downloadManager->getAllTasks();
     QList<DownloadTask*> activeTasks = m_downloadManager->getActiveTasks();
     QList<DownloadTask*> completedTasks = m_downloadManager->getCompletedTasks();
-    
-    QString status = tr("总任务：%1 | 活动：%2 | 已完成：%3")
+    QList<DownloadTask*> failedTasks = m_downloadManager->getFailedTasks();
+
+    QString status = tr("总任务：%1 | 活动：%2 | 已完成：%3 | 失败：%4")
                     .arg(allTasks.size())
                     .arg(activeTasks.size())
-                    .arg(completedTasks.size());
+                    .arg(completedTasks.size())
+                    .arg(failedTasks.size());
     
     statusBar()->showMessage(status);
 }
@@ -449,9 +503,10 @@ void MainWindow::loadTasks()
 
     ui->taskTable->setRowCount(0);
     ui->completedTable->setRowCount(0);
+    ui->failedTable->setRowCount(0);
     for (DownloadTask *task : tasks) {
         LOG_INFO(QString("遍历任务 - ID: %1, 状态: %2").arg(task->id()).arg(task->status()));
-        if (task->status() == DownloadTask::Completed || task->status() == DownloadTask::Failed || task->status() == DownloadTask::Cancelled) {
+        if (task->status() == DownloadTask::Completed) {
             int row = ui->completedTable->rowCount();
             ui->completedTable->insertRow(row);
             QTableWidgetItem *nameItem = new QTableWidgetItem(task->fileName());
@@ -461,6 +516,17 @@ void MainWindow::loadTasks()
             ui->completedTable->setItem(row, 1, new QTableWidgetItem(task->savePath()));
             ui->completedTable->setItem(row, 2, new QTableWidgetItem(formatBytes(task->downloadedSize())));
             LOG_INFO(QString("已插入到已完成任务表格 - ID: %1, 行: %2").arg(task->id()).arg(row));
+        } else if (task->status() == DownloadTask::Failed || task->status() == DownloadTask::Cancelled) {
+            int row = ui->failedTable->rowCount();
+            ui->failedTable->insertRow(row);
+            QTableWidgetItem *nameItem = new QTableWidgetItem(task->fileName());
+            nameItem->setToolTip(task->fileName());
+            ui->failedTable->setItem(row, 0, nameItem);
+
+            ui->failedTable->setItem(row, 1, new QTableWidgetItem(task->savePath()));
+            QString reason = task->status() == DownloadTask::Cancelled ? tr("用户取消") : task->errorMessage();
+            ui->failedTable->setItem(row, 2, new QTableWidgetItem(reason));
+            LOG_INFO(QString("已插入到失败任务表格 - ID: %1, 行: %2").arg(task->id()).arg(row));
         } else {
             ui->taskTable->addTask(task);
             LOG_INFO(QString("已插入到当前任务表格 - ID: %1").arg(task->id()));
