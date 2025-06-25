@@ -12,8 +12,9 @@ TaskTableWidget::TaskTableWidget(QWidget *parent)
 
 void TaskTableWidget::setupTable()
 {
-    setColumnCount(7);
-    setHorizontalHeaderLabels({tr("文件名"), tr("状态"), tr("进度"),
+    // Remove the "状态" column, leaving only six columns
+    setColumnCount(6);
+    setHorizontalHeaderLabels({tr("文件名"), tr("进度"),
                                tr("速度"), tr("大小"), tr("剩余时间"), tr("操作")});
 
     setAlternatingRowColors(true);
@@ -21,13 +22,12 @@ void TaskTableWidget::setupTable()
     setEditTriggers(QAbstractItemView::NoEditTriggers);
 
     horizontalHeader()->setStretchLastSection(false);
-    horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
-    horizontalHeader()->setSectionResizeMode(1, QHeaderView::ResizeToContents);
-    horizontalHeader()->setSectionResizeMode(2, QHeaderView::ResizeToContents);
-    horizontalHeader()->setSectionResizeMode(3, QHeaderView::ResizeToContents);
-    horizontalHeader()->setSectionResizeMode(4, QHeaderView::ResizeToContents);
-    horizontalHeader()->setSectionResizeMode(5, QHeaderView::ResizeToContents);
-    horizontalHeader()->setSectionResizeMode(6, QHeaderView::ResizeToContents);
+    horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);          // 文件名
+    horizontalHeader()->setSectionResizeMode(1, QHeaderView::ResizeToContents); // 进度
+    horizontalHeader()->setSectionResizeMode(2, QHeaderView::ResizeToContents); // 速度
+    horizontalHeader()->setSectionResizeMode(3, QHeaderView::ResizeToContents); // 大小
+    horizontalHeader()->setSectionResizeMode(4, QHeaderView::ResizeToContents); // 剩余时间
+    horizontalHeader()->setSectionResizeMode(5, QHeaderView::ResizeToContents); // 操作
 
     // Display long file names with ellipsis in the middle
     setTextElideMode(Qt::ElideMiddle);
@@ -47,16 +47,14 @@ void TaskTableWidget::addTask(DownloadTask *task)
     fileNameItem->setData(Qt::UserRole, QVariant::fromValue(static_cast<void*>(task)));
     setItem(row, 0, fileNameItem);
 
-    setItem(row, 1, new QTableWidgetItem(task->statusText()));
-
     QProgressBar *progressBar = new QProgressBar();
     progressBar->setRange(0, 100);
     progressBar->setValue(0);
-    setCellWidget(row, 2, progressBar);
+    setCellWidget(row, 1, progressBar);
 
-    setItem(row, 3, new QTableWidgetItem(task->speedText()));
-    setItem(row, 4, new QTableWidgetItem(formatBytes(task->downloadedSize())));
-    setItem(row, 5, new QTableWidgetItem(task->timeRemainingText()));
+    setItem(row, 2, new QTableWidgetItem(task->speedText()));
+    setItem(row, 3, new QTableWidgetItem(formatBytes(task->downloadedSize())));
+    setItem(row, 4, new QTableWidgetItem(task->timeRemainingText()));
 
     createOperationButtons(row, task);
 
@@ -91,20 +89,19 @@ void TaskTableWidget::updateTask(DownloadTask *task)
 
     item(row,0)->setText(task->fileName());
     item(row,0)->setToolTip(task->fileName());
-    item(row,1)->setText(task->statusText());
 
-    QProgressBar *progressBar = qobject_cast<QProgressBar*>(cellWidget(row,2));
+    QProgressBar *progressBar = qobject_cast<QProgressBar*>(cellWidget(row,1));
     if (progressBar)
         progressBar->setValue(static_cast<int>(task->progress()));
 
-    item(row,3)->setText(task->speedText());
+    item(row,2)->setText(task->speedText());
 
     QString sizeText = formatBytes(task->downloadedSize());
     if (task->fileSize() > 0)
         sizeText += " / " + formatBytes(task->fileSize());
-    item(row,4)->setText(sizeText);
+    item(row,3)->setText(sizeText);
 
-    item(row,5)->setText(task->timeRemainingText());
+    item(row,4)->setText(task->timeRemainingText());
 
     updateOperationButtons(row, task);
 }
@@ -131,12 +128,13 @@ void TaskTableWidget::createOperationButtons(int row, DownloadTask *task)
     layout->addWidget(resumeButton);
     layout->addWidget(cancelButton);
 
-    setCellWidget(row, 6, widget);
+    // Operation column index changed to 5 after removing status column
+    setCellWidget(row, 5, widget);
 }
 
 void TaskTableWidget::updateOperationButtons(int row, DownloadTask *task)
 {
-    QWidget *widget = cellWidget(row, 6);
+    QWidget *widget = cellWidget(row, 5);
     if (!widget) return;
 
     QList<QPushButton*> buttons = widget->findChildren<QPushButton*>();
