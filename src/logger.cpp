@@ -138,5 +138,6 @@ void Logger::writeToFile(const QString &message)
     
     if (m_logFile.isOpen()) {
         m_textStream << message << '\n';
+        m_textStream.flush();
     }
-} 
+}
