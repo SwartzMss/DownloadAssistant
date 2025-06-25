@@ -587,12 +587,14 @@ void MainWindow::createTrayIcon()
 void MainWindow::onTrayIconActivated(QSystemTrayIcon::ActivationReason reason)
 {
     LOG_INFO("托盘图标被激活");
-    if (reason == QSystemTrayIcon::Trigger || reason == QSystemTrayIcon::DoubleClick) {
+    if (reason == QSystemTrayIcon::Trigger) {
         if (isHidden()) {
             showNormal();
         } else {
             hide();
         }
+    } else if (reason == QSystemTrayIcon::DoubleClick) {
+        showNormal();
     }
 }
 
