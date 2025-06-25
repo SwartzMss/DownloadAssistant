@@ -106,6 +106,10 @@ void MainWindow::setupUI()
     ui->completedTable->horizontalHeader()->setSectionResizeMode(0, QHeaderView::ResizeToContents); // 文件名
     ui->completedTable->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Stretch);         // 文件路径
     ui->completedTable->horizontalHeader()->setSectionResizeMode(2, QHeaderView::ResizeToContents); // 大小
+
+    ui->completedTable->setTextElideMode(Qt::ElideMiddle);
+    ui->completedTable->setWordWrap(false);
+    ui->completedTable->horizontalHeader()->setMaximumSectionSize(400);
     // 右键菜单
     ui->completedTable->setContextMenuPolicy(Qt::CustomContextMenu);
     connect(ui->completedTable, &QTableWidget::customContextMenuRequested, this, [this](const QPoint &pos) {
@@ -450,7 +454,10 @@ void MainWindow::loadTasks()
         if (task->status() == DownloadTask::Completed || task->status() == DownloadTask::Failed || task->status() == DownloadTask::Cancelled) {
             int row = ui->completedTable->rowCount();
             ui->completedTable->insertRow(row);
-            ui->completedTable->setItem(row, 0, new QTableWidgetItem(task->fileName()));
+            QTableWidgetItem *nameItem = new QTableWidgetItem(task->fileName());
+            nameItem->setToolTip(task->fileName());
+            ui->completedTable->setItem(row, 0, nameItem);
+
             ui->completedTable->setItem(row, 1, new QTableWidgetItem(task->savePath()));
             ui->completedTable->setItem(row, 2, new QTableWidgetItem(formatBytes(task->downloadedSize())));
             LOG_INFO(QString("已插入到已完成任务表格 - ID: %1, 行: %2").arg(task->id()).arg(row));

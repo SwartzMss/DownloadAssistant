@@ -28,6 +28,13 @@ void TaskTableWidget::setupTable()
     horizontalHeader()->setSectionResizeMode(4, QHeaderView::ResizeToContents);
     horizontalHeader()->setSectionResizeMode(5, QHeaderView::ResizeToContents);
     horizontalHeader()->setSectionResizeMode(6, QHeaderView::ResizeToContents);
+
+    // Display long file names with ellipsis in the middle
+    setTextElideMode(Qt::ElideMiddle);
+    setWordWrap(false);
+
+    // Limit the maximum width of the file name column
+    horizontalHeader()->setMaximumSectionSize(400);
 }
 
 void TaskTableWidget::addTask(DownloadTask *task)
@@ -36,6 +43,7 @@ void TaskTableWidget::addTask(DownloadTask *task)
     insertRow(row);
 
     QTableWidgetItem *fileNameItem = new QTableWidgetItem(task->fileName());
+    fileNameItem->setToolTip(task->fileName());
     fileNameItem->setData(Qt::UserRole, QVariant::fromValue(static_cast<void*>(task)));
     setItem(row, 0, fileNameItem);
 
@@ -82,6 +90,7 @@ void TaskTableWidget::updateTask(DownloadTask *task)
         return;
 
     item(row,0)->setText(task->fileName());
+    item(row,0)->setToolTip(task->fileName());
     item(row,1)->setText(task->statusText());
 
     QProgressBar *progressBar = qobject_cast<QProgressBar*>(cellWidget(row,2));
