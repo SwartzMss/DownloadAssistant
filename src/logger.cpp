@@ -137,7 +137,6 @@ void Logger::writeToFile(const QString &message)
     QMutexLocker locker(&m_writeMutex);
     
     if (m_logFile.isOpen()) {
-        m_textStream << message << Qt::endl;
-        m_textStream.flush();
+        m_textStream << message << '\n';
     }
 } 
