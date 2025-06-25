@@ -26,7 +26,6 @@ SOURCES += \
     src/logger.cpp \
     src/tasktablewidget.cpp \
     src/filebrowserdialog.cpp \
-    src/smbdirmodelworker.cpp \
     src/smbpathchecker.cpp
 
 HEADERS += \
@@ -38,7 +37,6 @@ HEADERS += \
     src/logger.h \
     src/tasktablewidget.h \
     src/filebrowserdialog.h \
-    src/smbdirmodelworker.h \
     src/directoryworker.h \
     src/smbpathchecker.h
 
