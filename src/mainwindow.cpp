@@ -614,7 +614,13 @@ void MainWindow::onBrowseSmbButtonClicked()
         showWarning(tr("请输入下载地址"));
         return;
     }
-    FileBrowserDialog dialog(toUncPath(url), this);
+    QString uncPath = toUncPath(url);
+    if (!QDir(uncPath).exists()) {
+        showError(tr("目录不存在：%1").arg(url));
+        return;
+    }
+
+    FileBrowserDialog dialog(uncPath, this);
     if (dialog.exec() != QDialog::Accepted)
         return;
 
