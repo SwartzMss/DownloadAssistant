@@ -5,6 +5,7 @@
 #include <QDialogButtonBox>
 #include <QHeaderView>
 #include <QTimer>
+#include <QMessageBox>
 
 FileBrowserDialog::FileBrowserDialog(const QString &rootPath, QWidget *parent)
     : QDialog(parent)
@@ -18,8 +19,13 @@ FileBrowserDialog::FileBrowserDialog(const QString &rootPath, QWidget *parent)
     // 延迟加载实际的远程根目录，以减少界面卡顿
     QTimer::singleShot(0, this, [this, rootPath] {
         QModelIndex rootIndex = m_model->setRootPath(rootPath);
-        if (rootIndex.isValid())
+        if (rootIndex.isValid()) {
             m_view->setRootIndex(rootIndex);
+        } else {
+            QMessageBox::critical(this, tr("错误"),
+                                  tr("目录不存在: %1").arg(rootPath));
+            reject();
+        }
     });
 
     m_view->setSelectionMode(QAbstractItemView::ExtendedSelection);
