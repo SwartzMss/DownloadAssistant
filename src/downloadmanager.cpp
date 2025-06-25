@@ -238,9 +238,11 @@ void DownloadManager::cancelTask(const QString &taskId)
     task->setErrorMessage(tr("用户取消"));
     
     LOG_INFO(QString("任务已取消 - ID: %1, 当前活跃下载数: %2").arg(taskId).arg(m_activeDownloadCount));
-    
+
     m_smbDownloader->cancelDownload(task);
-    
+
+    saveTasks();
+
     processNextTask();
 }
 
