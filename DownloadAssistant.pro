@@ -25,7 +25,8 @@ SOURCES += \
     src/directoryworker.cpp \
     src/logger.cpp \
     src/tasktablewidget.cpp \
-    src/filebrowserdialog.cpp
+    src/filebrowserdialog.cpp \
+    src/smbpathchecker.cpp
 
 HEADERS += \
     src/mainwindow.h \
@@ -36,7 +37,8 @@ HEADERS += \
     src/logger.h \
     src/tasktablewidget.h \
     src/filebrowserdialog.h \
-    src/directoryworker.h
+    src/directoryworker.h \
+    src/smbpathchecker.h
 
 FORMS += \
     src/mainwindow.ui

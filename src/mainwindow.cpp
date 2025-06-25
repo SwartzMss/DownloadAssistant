@@ -54,6 +54,7 @@ MainWindow::MainWindow(QWidget *parent)
     , m_trayIcon(nullptr)
     , m_trayMenu(nullptr)
     , m_settings(new QSettings(QCoreApplication::applicationDirPath() + "/config.ini", QSettings::IniFormat, this))
+    , m_smbCheckThread(nullptr)
 {
     LOG_INFO("MainWindow 初始化开始");
     
@@ -100,6 +101,10 @@ MainWindow::~MainWindow()
     // 保存最后一次输入的下载地址
     m_settings->setValue("lastUrl", ui->urlEdit->text());
     m_settings->sync();
+    if (m_smbCheckThread) {
+        m_smbCheckThread->quit();
+        m_smbCheckThread->wait();
+    }
     delete ui;
 }
 
@@ -614,9 +619,25 @@ void MainWindow::onBrowseSmbButtonClicked()
         showWarning(tr("请输入下载地址"));
         return;
     }
-    QString uncPath = toUncPath(url);
-    if (!QDir(uncPath).exists()) {
-        showError(tr("目录不存在：%1").arg(url));
+    m_lastSmbUrl = url;
+    auto *thread = new QThread(this);
+    auto *checker = new SmbPathChecker();
+    checker->moveToThread(thread);
+    connect(thread, &QThread::started, [checker, url] { checker->check(url); });
+    connect(checker, &SmbPathChecker::finished, this, &MainWindow::onSmbPathCheckFinished);
+    connect(checker, &SmbPathChecker::finished, thread, &QThread::quit);
+    connect(thread, &QThread::finished, checker, &QObject::deleteLater);
+    connect(thread, &QThread::finished, thread, &QObject::deleteLater);
+    connect(thread, &QThread::finished, this, [this] { m_smbCheckThread = nullptr; });
+    m_smbCheckThread = thread;
+    thread->start();
+    return;
+}
+
+void MainWindow::onSmbPathCheckFinished(bool exists, const QString &uncPath)
+{
+    if (!exists) {
+        showError(tr("目录不存在：%1").arg(m_lastSmbUrl));
         return;
     }
 

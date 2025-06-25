@@ -9,6 +9,8 @@
 #include <QSettings>
 #include "downloadmanager.h"
 #include "tasktablewidget.h"
+#include "smbpathchecker.h"
+#include <QThread>
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -44,6 +46,7 @@ private slots:
     void onTrayIconActivated(QSystemTrayIcon::ActivationReason reason);
     void onDownloadFileClicked(const QString &fileName);
     void onDownloadDirectoryClicked(const QString &dirUrl);
+    void onSmbPathCheckFinished(bool exists, const QString &uncPath);
 
 private:
     // UI 组件
@@ -56,6 +59,8 @@ private:
     QSystemTrayIcon *m_trayIcon;
     QMenu *m_trayMenu;
     QSettings *m_settings;
+    QThread *m_smbCheckThread;
+    QString m_lastSmbUrl;
     
     // 辅助方法
     void setupUI();
