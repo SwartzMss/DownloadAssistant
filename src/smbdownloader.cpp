@@ -59,6 +59,7 @@ bool SmbDownloader::startDownload(DownloadTask *task)
     info->lastBytesReceived = task->downloadedSize();
     info->lastSpeedUpdate = QDateTime::currentMSecsSinceEpoch();
     info->totalBytes = 0;
+    info->smoothedSpeed = 0.0;
 
     // 检查文件是否存在以确定断点续传
     QUrl url(task->url());
@@ -218,14 +219,16 @@ void SmbDownloader::updateSpeed()
             qint64 timeDiff = currentTime - info->lastSpeedUpdate;
 
             if (timeDiff > 0) {
-                // 计算自上次更新时间以来接收的字节数
                 qint64 bytesDiff = task->downloadedSize() - info->lastBytesReceived;
-                qint64 speed = (bytesDiff * 1000) / timeDiff; // 字节/秒
+                double newSpeed = (bytesDiff * 1000.0) / timeDiff; // 字节/秒
 
-                // 记录此次计算的基准点并更新任务的速度
+                if (bytesDiff > 0) {
+                    info->smoothedSpeed = 0.7 * info->smoothedSpeed + 0.3 * newSpeed;
+                }
+
                 info->lastSpeedUpdate = currentTime;
                 info->lastBytesReceived = task->downloadedSize();
-                task->setSpeed(speed);
+                task->setSpeed(static_cast<qint64>(info->smoothedSpeed));
             }
         }
     }

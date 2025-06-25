@@ -45,6 +45,7 @@ private:
         qint64 lastBytesReceived;
         qint64 lastSpeedUpdate;
         qint64 totalBytes;
+        double smoothedSpeed;
     };
 
     QMap<DownloadTask*, DownloadInfo*> m_activeDownloads;
