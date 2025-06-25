@@ -234,6 +234,38 @@
                </item>
               </layout>
              </widget>
+             <widget class="QWidget" name="tab_failed">
+              <attribute name="title">
+               <string>失败任务</string>
+              </attribute>
+              <layout class="QVBoxLayout" name="verticalLayout_5">
+               <item>
+                <widget class="QTableWidget" name="failedTable">
+                 <property name="selectionBehavior">
+                  <enum>QAbstractItemView::SelectionBehavior::SelectRows</enum>
+                 </property>
+                 <property name="sortingEnabled">
+                  <bool>true</bool>
+                 </property>
+                 <column>
+                  <property name="text">
+                   <string>文件名</string>
+                  </property>
+                 </column>
+                 <column>
+                  <property name="text">
+                   <string>文件路径</string>
+                  </property>
+                 </column>
+                 <column>
+                  <property name="text">
+                   <string>原因</string>
+                  </property>
+                 </column>
+                </widget>
+               </item>
+              </layout>
+             </widget>
             </widget>
            </item>
           </layout>

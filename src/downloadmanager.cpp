@@ -243,8 +243,9 @@ void DownloadManager::cancelTask(const QString &taskId)
     if (task->status() == DownloadTask::Downloading) {
         m_activeDownloadCount--;
     }
-    
+
     task->setStatus(DownloadTask::Cancelled);
+    task->setErrorMessage(tr("用户取消"));
     
     LOG_INFO(QString("任务已取消 - ID: %1, 当前活跃下载数: %2").arg(taskId).arg(m_activeDownloadCount));
     
@@ -320,7 +321,7 @@ QList<DownloadTask*> DownloadManager::getFailedTasks() const
 {
     QList<DownloadTask*> failedTasks;
     for (DownloadTask *task : m_tasks) {
-        if (task->status() == DownloadTask::Failed) {
+        if (task->status() == DownloadTask::Failed || task->status() == DownloadTask::Cancelled) {
             failedTasks.append(task);
         }
     }
@@ -371,6 +372,7 @@ void DownloadManager::saveTasks()
         taskObject["downloadedSize"] = task->downloadedSize();
         taskObject["totalSize"] = task->totalSize();
         taskObject["supportsResume"] = task->supportsResume();
+        taskObject["errorMessage"] = task->errorMessage();
         tasksArray.append(taskObject);
     }
     
@@ -418,6 +420,7 @@ void DownloadManager::loadTasks()
             qint64 downloadedSize = taskObject["downloadedSize"].toVariant().toLongLong();
             qint64 totalSize = taskObject["totalSize"].toVariant().toLongLong();
             bool supportsResume = taskObject["supportsResume"].toBool();
+            QString errorMessage = taskObject["errorMessage"].toString();
             // 创建任务对象
             DownloadTask *task = new DownloadTask(this);
             task->setId(id);
@@ -432,6 +435,8 @@ void DownloadManager::loadTasks()
             task->setDownloadedSize(downloadedSize);
             task->setTotalSize(totalSize);
             task->setSupportsResume(supportsResume);
+            if (!errorMessage.isEmpty())
+                task->setErrorMessage(errorMessage);
             m_tasks[id] = task;
             LOG_INFO(QString("加载任务 - ID: %1, URL: %2").arg(id).arg(url));
         }
@@ -473,6 +478,7 @@ void DownloadManager::onDownloadCancelled(DownloadTask *task)
 {
     LOG_INFO(QString("下载取消 - ID: %1").arg(task->id()));
     m_activeDownloadCount--;
+    task->setErrorMessage(tr("用户取消"));
     emit taskCancelled(task->id());
     processNextTask();
 }
