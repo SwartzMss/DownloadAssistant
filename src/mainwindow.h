@@ -6,7 +6,6 @@
 #include <QTimer>
 #include <QSystemTrayIcon>
 #include <QMenu>
-#include <QSettings>
 #include "downloadmanager.h"
 #include "tasktablewidget.h"
 #include "smbpathchecker.h"
@@ -57,7 +56,6 @@ private:
     QTimer *m_updateTimer;
     QSystemTrayIcon *m_trayIcon;
     QMenu *m_trayMenu;
-    QSettings *m_settings;
     QThread *m_smbCheckThread;
     QString m_lastSmbUrl;
     

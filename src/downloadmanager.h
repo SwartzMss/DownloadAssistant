@@ -49,6 +49,10 @@ public:
     void setDefaultSavePath(const QString &path);
     int getMaxConcurrentDownloads() const;
     void setMaxConcurrentDownloads(int max);
+
+    // 最近一次输入的地址
+    QString getLastUrl() const;
+    void setLastUrl(const QString &url);
     
     // 持久化
     void saveTasks();
@@ -88,6 +92,7 @@ private:
     QString m_defaultSavePath;
     int m_maxConcurrentDownloads;
     int m_activeDownloadCount;
+    QString m_lastUrl;
     
     // 辅助方法
     void processNextTask();
