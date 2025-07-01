@@ -10,10 +10,12 @@
 #include <QDebug>
 #include <QThread>
 #include <QTimer>
+#include <QtGlobal>
 #include "logger.h"
 
 SmbDownloader::SmbDownloader(QObject *parent)
     : QObject(parent)
+    , m_chunkSize(1024 * 1024)
 {
     LOG_INFO("SmbDownloader 初始化");
 }
@@ -23,10 +25,14 @@ SmbDownloader::~SmbDownloader()
     LOG_INFO("SmbDownloader 析构");
     // 清理所有活动下载
     for (auto info : m_activeDownloads.values()) {
-        if (info->worker) {
-            info->worker->requestCancel();
-            info->worker->wait();
-            delete info->worker;
+        for (SmbWorker *w : info->workers) {
+            w->requestCancel();
+            w->wait();
+            delete w;
+        }
+        if (info->file) {
+            info->file->close();
+            delete info->file;
         }
         if (info->speedTimer) {
             info->speedTimer->stop();
@@ -55,9 +61,9 @@ bool SmbDownloader::startDownload(DownloadTask *task)
     // 创建下载信息
     DownloadInfo *info = new DownloadInfo;
     info->task = task;
-    info->worker = new SmbWorker(task, this);
+    info->file = nullptr;
     info->speedTimer = nullptr;
-    info->lastBytesReceived = task->downloadedSize();
+    info->lastBytesReceived = 0;
     info->lastSpeedUpdate = QDateTime::currentMSecsSinceEpoch();
     info->totalBytes = 0;
     info->smoothedSpeed = 0.0;
@@ -73,17 +79,45 @@ bool SmbDownloader::startDownload(DownloadTask *task)
     filePath += fileName;
 
     QFileInfo fileInfo(filePath);
-    if (fileInfo.exists()) {
-        task->setSupportsResume(true);
+    QDir().mkpath(fileInfo.absolutePath());
+
+    // 先获取远程文件大小
+    QString unc = toUncPath(task->url());
+    QFile remoteFile(unc);
+    if (!remoteFile.open(QIODevice::ReadOnly)) {
+        delete info;
+        emit downloadFailed(task, tr("无法打开远程文件"));
+        return false;
     }
-    
-    // 连接信号
-    connect(info->worker, &SmbWorker::progress,
-            this, &SmbDownloader::onDownloadProgress);
-    connect(info->worker, &SmbWorker::finished,
-            this, [this, task](bool success, const QString &err) {
-                onDownloadFinished(task, success, err);
-            });
+    qint64 totalSize = remoteFile.size();
+    remoteFile.close();
+    task->setTotalSize(totalSize);
+    info->totalBytes = totalSize;
+
+    // 打开本地文件，预分配大小
+    QFile *localFile = new QFile(filePath);
+    if (!localFile->open(QIODevice::ReadWrite)) {
+        delete localFile;
+        delete info;
+        emit downloadFailed(task, tr("无法创建文件"));
+        return false;
+    }
+    localFile->resize(totalSize);
+    info->file = localFile;
+
+    // 创建工作线程，按块分割
+    int chunkCount = (int)((totalSize + m_chunkSize - 1) / m_chunkSize);
+    for (int i = 0; i < chunkCount; ++i) {
+        qint64 offset = i * m_chunkSize;
+        qint64 size = qMin(m_chunkSize, totalSize - offset);
+        SmbWorker *w = new SmbWorker(task, localFile, &info->mutex, offset, size, this);
+        connect(w, &SmbWorker::progress, this, &SmbDownloader::onDownloadProgress);
+        connect(w, &SmbWorker::finished, this, [this, task](bool success, const QString &err) {
+            onDownloadFinished(task, success, err);
+        });
+        info->workers.append(w);
+        info->progressMap[w] = 0;
+    }
 
     // 创建速度计时器
     info->speedTimer = new QTimer(this);
@@ -96,7 +130,9 @@ bool SmbDownloader::startDownload(DownloadTask *task)
 
     // 更新任务状态并启动线程
     task->setStatus(DownloadTask::Downloading);
-    info->worker->start();
+    for (SmbWorker *w : info->workers) {
+        w->start();
+    }
 
     emit downloadStarted(task);
     return true;
@@ -107,13 +143,14 @@ void SmbDownloader::pauseDownload(DownloadTask *task)
     LOG_INFO(QString("暂停 SMB 下载 - 任务ID: %1").arg(task->id()));
     
     DownloadInfo *info = findDownloadInfo(task);
-    if (!info || !info->worker) {
+    if (!info) {
         LOG_WARNING(QString("找不到下载信息 - 任务ID: %1").arg(task->id()));
         return;
     }
 
     // 暂停下载
-    info->worker->requestPause();
+    for (SmbWorker *w : info->workers)
+        w->requestPause();
     task->setStatus(DownloadTask::Paused);
     
     LOG_INFO(QString("SMB 下载已暂停 - 任务ID: %1").arg(task->id()));
@@ -130,8 +167,9 @@ void SmbDownloader::resumeDownload(DownloadTask *task)
     }
 
     DownloadInfo *info = findDownloadInfo(task);
-    if (info && info->worker) {
-        info->worker->resumeWork();
+    if (info && !info->workers.isEmpty()) {
+        for (SmbWorker *w : info->workers)
+            w->resumeWork();
         task->setStatus(DownloadTask::Downloading);
         emit downloadResumed(task);
     } else {
@@ -151,9 +189,9 @@ void SmbDownloader::cancelDownload(DownloadTask *task)
     }
 
     // 取消下载
-    if (info->worker) {
-        info->worker->requestCancel();
-        info->worker->wait();
+    for (SmbWorker *w : info->workers) {
+        w->requestCancel();
+        w->wait();
     }
 
     // 删除已下载的部分文件
@@ -186,7 +224,7 @@ void SmbDownloader::onDownloadProgress(qint64 bytesReceived, qint64 bytesTotal)
     DownloadInfo *info = nullptr;
 
     for (auto it = m_activeDownloads.begin(); it != m_activeDownloads.end(); ++it) {
-        if (it.value()->worker == worker) {
+        if (it.value()->workers.contains(worker)) {
             task = it.key();
             info = it.value();
             break;
@@ -196,29 +234,41 @@ void SmbDownloader::onDownloadProgress(qint64 bytesReceived, qint64 bytesTotal)
     if (!task || !info)
         return;
 
-    if (bytesTotal > 0) {
-        task->setTotalSize(bytesTotal);
-        info->totalBytes = bytesTotal;
+    if (info->totalBytes > 0) {
+        task->setTotalSize(info->totalBytes);
     }
 
-    task->setDownloadedSize(bytesReceived);
-    emit downloadProgress(task, bytesReceived, bytesTotal);
+    info->progressMap[worker] = bytesReceived;
+    qint64 sum = 0;
+    for (qint64 v : info->progressMap.values())
+        sum += v;
+    task->setDownloadedSize(sum);
+    emit downloadProgress(task, sum, info->totalBytes);
 }
 
 void SmbDownloader::onDownloadFinished(DownloadTask *task, bool success, const QString &error)
 {
     DownloadInfo *info = findDownloadInfo(task);
-    Q_UNUSED(info);
+    if (!info)
+        return;
 
-    if (success) {
-        task->setStatus(DownloadTask::Completed);
-        emit downloadCompleted(task);
-    } else {
+    if (!success) {
         task->setStatus(DownloadTask::Failed);
         emit downloadFailed(task, error);
+        for (SmbWorker *w : info->workers) {
+            if (w->isRunning())
+                w->requestCancel();
+        }
+        cleanupDownload(task);
+        return;
     }
 
-    cleanupDownload(task);
+    info->finishedCount++;
+    if (info->finishedCount == info->workers.size()) {
+        task->setStatus(DownloadTask::Completed);
+        emit downloadCompleted(task);
+        cleanupDownload(task);
+    }
 }
 
 
@@ -260,9 +310,15 @@ void SmbDownloader::cleanupDownload(DownloadTask *task)
         return;
     }
 
-    if (info->worker) {
-        info->worker->wait();
-        delete info->worker;
+    for (SmbWorker *w : info->workers) {
+        w->wait();
+        delete w;
+    }
+    info->workers.clear();
+    if (info->file) {
+        info->file->close();
+        delete info->file;
+        info->file = nullptr;
     }
     
     if (info->speedTimer) {
