@@ -5,6 +5,9 @@
 #include <QTimer>
 #include <QDateTime>
 #include <QMap>
+#include <QFile>
+#include <QMutex>
+#include <QList>
 #include "smbworker.h"
 #include "downloadtask.h"
 
@@ -15,6 +18,9 @@ class SmbDownloader : public QObject
 public:
     explicit SmbDownloader(QObject *parent = nullptr);
     ~SmbDownloader();
+
+    void setChunkSize(qint64 size) { m_chunkSize = size; }
+    qint64 chunkSize() const { return m_chunkSize; }
 
     // 下载控制
     bool startDownload(DownloadTask *task);
@@ -40,15 +46,21 @@ private slots:
 private:
     struct DownloadInfo {
         DownloadTask *task;
-        SmbWorker *worker;
+        QList<SmbWorker*> workers;
+        QFile *file;
+        QMutex mutex;
+        QMap<SmbWorker*, qint64> progressMap;
         QTimer *speedTimer;
         qint64 lastBytesReceived;
         qint64 lastSpeedUpdate;
         qint64 totalBytes;
         double smoothedSpeed;
+        int finishedCount = 0;
     };
 
     QMap<DownloadTask*, DownloadInfo*> m_activeDownloads;
+
+    qint64 m_chunkSize;
     
     // 辅助方法
     DownloadInfo* findDownloadInfo(DownloadTask *task);

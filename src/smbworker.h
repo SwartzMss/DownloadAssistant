@@ -3,6 +3,8 @@
 
 #include <QThread>
 #include <QString>
+#include <QFile>
+#include <QMutex>
 
 class DownloadTask;
 
@@ -10,7 +12,9 @@ class SmbWorker : public QThread
 {
     Q_OBJECT
 public:
-    explicit SmbWorker(DownloadTask *task, QObject *parent = nullptr);
+    explicit SmbWorker(DownloadTask *task, QFile *file, QMutex *mutex,
+                       qint64 startOffset, qint64 chunkSize,
+                       QObject *parent = nullptr);
 
     void requestPause();
     void requestCancel();
@@ -25,9 +29,13 @@ protected:
 
 private:
     DownloadTask *m_task;
+    QFile *m_file;
+    QMutex *m_mutex;
     bool m_pauseRequested;
     bool m_cancelRequested;
-    qint64 m_offset;
-};
+    qint64 m_startOffset;
+    qint64 m_chunkSize;
+    qint64 m_bytesReceived;
+}; 
 
 #endif // SMBWORKER_H
