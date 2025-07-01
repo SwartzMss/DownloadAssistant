@@ -1,6 +1,7 @@
 #include "smbdownloader.h"
 #include "downloadtask.h"
 #include "smbworker.h"
+#include "pathutils.h"
 #include <QFileInfo>
 #include <QDir>
 #include <QFile>

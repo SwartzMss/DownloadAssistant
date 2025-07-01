@@ -19,8 +19,6 @@ public:
     explicit SmbDownloader(QObject *parent = nullptr);
     ~SmbDownloader();
 
-    void setChunkSize(qint64 size) { m_chunkSize = size; }
-    qint64 chunkSize() const { return m_chunkSize; }
 
     // 下载控制
     bool startDownload(DownloadTask *task);
