@@ -106,11 +106,15 @@ bool SmbDownloader::startDownload(DownloadTask *task)
     localFile->resize(totalSize);
     info->file = localFile;
 
-    // 创建工作线程，按块分割
-    int chunkCount = (int)((totalSize + m_chunkSize - 1) / m_chunkSize);
-    for (int i = 0; i < chunkCount; ++i) {
-        qint64 offset = i * m_chunkSize;
-        qint64 size = qMin(m_chunkSize, totalSize - offset);
+    // 根据文件大小决定线程数：超过100MB启用3个线程，否则单线程
+    const qint64 multiThreshold = 100ll * 1024 * 1024;
+    int threadCount = (totalSize >= multiThreshold) ? 3 : 1;
+    qint64 baseSize = threadCount > 0 ? totalSize / threadCount : totalSize;
+
+    // 创建工作线程，按线程数分割块
+    for (int i = 0; i < threadCount; ++i) {
+        qint64 offset = i * baseSize;
+        qint64 size = (i == threadCount - 1) ? (totalSize - offset) : baseSize;
         SmbWorker *w = new SmbWorker(task, localFile, &info->mutex, offset, size, this);
         connect(w, &SmbWorker::progress, this, &SmbDownloader::onDownloadProgress);
         connect(w, &SmbWorker::finished, this, [this, task](bool success, const QString &err) {
