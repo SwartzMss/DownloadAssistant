@@ -59,7 +59,7 @@ void TaskTableWidget::addTask(DownloadTask *task)
     setCellWidget(row, 1, progressBar);
 
     setItem(row, 2, new QTableWidgetItem(task->speedText()));
-    setItem(row, 3, new QTableWidgetItem(formatBytes(task->downloadedSize())));
+    setItem(row, 3, new QTableWidgetItem(formatBytes(task->fileSize())));
     setItem(row, 4, new QTableWidgetItem(task->timeRemainingText()));
 
     createOperationButtons(row, task);
@@ -102,10 +102,7 @@ void TaskTableWidget::updateTask(DownloadTask *task)
 
     item(row,2)->setText(task->speedText());
 
-    QString sizeText = formatBytes(task->downloadedSize());
-    if (task->fileSize() > 0)
-        sizeText += " / " + formatBytes(task->fileSize());
-    item(row,3)->setText(sizeText);
+    item(row,3)->setText(formatBytes(task->fileSize()));
 
     item(row,4)->setText(task->timeRemainingText());
 
