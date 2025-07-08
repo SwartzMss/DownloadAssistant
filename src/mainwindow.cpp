@@ -510,38 +510,58 @@ void MainWindow::loadTasks()
 {
     // 从下载管理器获取所有已加载的任务并插入到表格中
     LOG_INFO("加载任务到界面");
-    QList<DownloadTask*> tasks = m_downloadManager->getAllTasks();
+    QList<DownloadTask*> allTasks = m_downloadManager->getAllTasks();
 
     ui->taskTable->setRowCount(0);
     ui->completedTable->setRowCount(0);
     ui->failedTable->setRowCount(0);
-    for (DownloadTask *task : tasks) {
+
+    QList<DownloadTask*> completed;
+    QList<DownloadTask*> failed;
+    QList<DownloadTask*> active;
+
+    for (DownloadTask *task : allTasks) {
         LOG_INFO(QString("遍历任务 - ID: %1, 状态: %2").arg(task->id()).arg(task->status()));
         if (task->status() == DownloadTask::Completed) {
-            int row = ui->completedTable->rowCount();
-            ui->completedTable->insertRow(row);
-            QTableWidgetItem *nameItem = new QTableWidgetItem(task->fileName());
-            nameItem->setToolTip(task->fileName());
-            ui->completedTable->setItem(row, 0, nameItem);
-
-            ui->completedTable->setItem(row, 1, new QTableWidgetItem(task->savePath()));
-            ui->completedTable->setItem(row, 2, new QTableWidgetItem(formatBytes(task->downloadedSize())));
-            LOG_INFO(QString("已插入到已完成任务表格 - ID: %1, 行: %2").arg(task->id()).arg(row));
+            completed.append(task);
         } else if (task->status() == DownloadTask::Failed || task->status() == DownloadTask::Cancelled) {
-            int row = ui->failedTable->rowCount();
-            ui->failedTable->insertRow(row);
-            QTableWidgetItem *nameItem = new QTableWidgetItem(task->fileName());
-            nameItem->setToolTip(task->fileName());
-            ui->failedTable->setItem(row, 0, nameItem);
-
-            ui->failedTable->setItem(row, 1, new QTableWidgetItem(task->savePath()));
-            QString reason = task->status() == DownloadTask::Cancelled ? tr("用户取消") : task->errorMessage();
-            ui->failedTable->setItem(row, 2, new QTableWidgetItem(reason));
-            LOG_INFO(QString("已插入到失败任务表格 - ID: %1, 行: %2").arg(task->id()).arg(row));
+            failed.append(task);
         } else {
-            ui->taskTable->addTask(task);
-            LOG_INFO(QString("已插入到当前任务表格 - ID: %1").arg(task->id()));
+            active.append(task);
         }
+    }
+
+    std::sort(completed.begin(), completed.end(), [](DownloadTask *a, DownloadTask *b) {
+        return a->endTime() < b->endTime();
+    });
+
+    for (DownloadTask *task : completed) {
+        int row = ui->completedTable->rowCount();
+        ui->completedTable->insertRow(row);
+        QTableWidgetItem *nameItem = new QTableWidgetItem(task->fileName());
+        nameItem->setToolTip(task->fileName());
+        ui->completedTable->setItem(row, 0, nameItem);
+        ui->completedTable->setItem(row, 1, new QTableWidgetItem(task->savePath()));
+        ui->completedTable->setItem(row, 2, new QTableWidgetItem(formatBytes(task->downloadedSize())));
+        LOG_INFO(QString("已插入到已完成任务表格 - ID: %1, 行: %2, 完成时间: %3")
+                 .arg(task->id()).arg(row).arg(task->endTime().toString(Qt::ISODate)));
+    }
+
+    for (DownloadTask *task : failed) {
+        int row = ui->failedTable->rowCount();
+        ui->failedTable->insertRow(row);
+        QTableWidgetItem *nameItem = new QTableWidgetItem(task->fileName());
+        nameItem->setToolTip(task->fileName());
+        ui->failedTable->setItem(row, 0, nameItem);
+        ui->failedTable->setItem(row, 1, new QTableWidgetItem(task->savePath()));
+        QString reason = task->status() == DownloadTask::Cancelled ? tr("用户取消") : task->errorMessage();
+        ui->failedTable->setItem(row, 2, new QTableWidgetItem(reason));
+        LOG_INFO(QString("已插入到失败任务表格 - ID: %1, 行: %2").arg(task->id()).arg(row));
+    }
+
+    for (DownloadTask *task : active) {
+        ui->taskTable->addTask(task);
+        LOG_INFO(QString("已插入到当前任务表格 - ID: %1").arg(task->id()));
     }
     updateStatusBar();
 }
