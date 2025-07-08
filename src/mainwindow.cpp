@@ -506,6 +506,17 @@ void MainWindow::loadTasks()
     LOG_INFO("加载任务到界面");
     QList<DownloadTask*> allTasks = m_downloadManager->getAllTasks();
 
+    // Temporarily disable sorting to avoid row reordering while inserting items
+    bool completedSortingEnabled = ui->completedTable->isSortingEnabled();
+    int completedSortColumn = ui->completedTable->horizontalHeader()->sortIndicatorSection();
+    Qt::SortOrder completedSortOrder = ui->completedTable->horizontalHeader()->sortIndicatorOrder();
+    ui->completedTable->setSortingEnabled(false);
+
+    bool failedSortingEnabled = ui->failedTable->isSortingEnabled();
+    int failedSortColumn = ui->failedTable->horizontalHeader()->sortIndicatorSection();
+    Qt::SortOrder failedSortOrder = ui->failedTable->horizontalHeader()->sortIndicatorOrder();
+    ui->failedTable->setSortingEnabled(false);
+
     ui->taskTable->setRowCount(0);
     ui->completedTable->setRowCount(0);
     ui->failedTable->setRowCount(0);
@@ -557,6 +568,15 @@ void MainWindow::loadTasks()
         ui->taskTable->addTask(task);
         LOG_INFO(QString("已插入到当前任务表格 - ID: %1").arg(task->id()));
     }
+    // Restore sorting state for completed and failed tables
+    ui->completedTable->setSortingEnabled(completedSortingEnabled);
+    if (completedSortingEnabled)
+        ui->completedTable->sortByColumn(completedSortColumn, completedSortOrder);
+
+    ui->failedTable->setSortingEnabled(failedSortingEnabled);
+    if (failedSortingEnabled)
+        ui->failedTable->sortByColumn(failedSortColumn, failedSortOrder);
+
     updateStatusBar();
 }
 
