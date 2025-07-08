@@ -455,12 +455,6 @@ QString MainWindow::buildFinalSavePath(const QString &basePath) const
     return dateDirPath;
 }
 
-void MainWindow::fetchSmbFileList(const QString &url)
-{
-    // 这里原本有 remoteFileTable 的相关操作，已移除
-    // 你可以根据新 UI 逻辑实现文件选择后的处理
-}
-
 void MainWindow::onDownloadFileClicked(const QString &fileUrl)
 {
     LOG_INFO(QString("开始下载文件: %1").arg(fileUrl));

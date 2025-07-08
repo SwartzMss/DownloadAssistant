@@ -72,7 +72,6 @@ private:
     void showWarning(const QString &message);
     void showError(const QString &message);
     QString formatBytes(qint64 bytes) const;
-    void fetchSmbFileList(const QString &url);
 
     QString buildFinalSavePath(const QString &basePath) const;
 
