@@ -12,6 +12,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonArray>
+#include <QDateTime>
 
 DownloadManager::DownloadManager(QObject *parent)
     : QObject(parent)
@@ -365,6 +366,7 @@ void DownloadManager::saveTasks()
         taskObject["totalSize"] = task->totalSize();
         taskObject["supportsResume"] = task->supportsResume();
         taskObject["errorMessage"] = task->errorMessage();
+        taskObject["endTime"] = task->endTime().toString(Qt::ISODate);
         tasksArray.append(taskObject);
     }
     
@@ -413,6 +415,7 @@ void DownloadManager::loadTasks()
             qint64 totalSize = taskObject["totalSize"].toVariant().toLongLong();
             bool supportsResume = taskObject["supportsResume"].toBool();
             QString errorMessage = taskObject["errorMessage"].toString();
+            QDateTime endTime = QDateTime::fromString(taskObject["endTime"].toString(), Qt::ISODate);
             // 创建任务对象
             DownloadTask *task = new DownloadTask(this);
             task->setId(id);
@@ -427,6 +430,8 @@ void DownloadManager::loadTasks()
             task->setDownloadedSize(downloadedSize);
             task->setTotalSize(totalSize);
             task->setSupportsResume(supportsResume);
+            if (endTime.isValid())
+                task->setEndTime(endTime);
             if (!errorMessage.isEmpty())
                 task->setErrorMessage(errorMessage);
             m_tasks[id] = task;
@@ -470,6 +475,7 @@ void DownloadManager::onDownloadCancelled(DownloadTask *task)
 {
     LOG_INFO(QString("下载取消 - ID: %1").arg(task->id()));
     m_activeDownloadCount--;
+    task->setEndTime(QDateTime::currentDateTime());
     task->setErrorMessage(tr("用户取消"));
     emit taskCancelled(task->id());
     processNextTask();
@@ -480,6 +486,7 @@ void DownloadManager::onDownloadCompleted(DownloadTask *task)
 {
     LOG_INFO(QString("下载完成 - ID: %1").arg(task->id()));
     m_activeDownloadCount--;
+    task->setEndTime(QDateTime::currentDateTime());
     task->setStatus(DownloadTask::Completed);
     emit taskCompleted(task->id());
     processNextTask();
@@ -490,6 +497,7 @@ void DownloadManager::onDownloadFailed(DownloadTask *task, const QString &error)
 {
     LOG_ERROR(QString("下载失败 - ID: %1, 错误: %2").arg(task->id()).arg(error));
     m_activeDownloadCount--;
+    task->setEndTime(QDateTime::currentDateTime());
     task->setStatus(DownloadTask::Failed);
     task->setErrorMessage(error);
     emit taskFailed(task->id(), error);

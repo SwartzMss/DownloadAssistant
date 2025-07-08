@@ -62,9 +62,6 @@ public:
     void setSupportsResume(bool supports) { m_supportsResume = supports; }
     
     // 时间信息
-    QDateTime startTime() const { return m_startTime; }
-    void setStartTime(const QDateTime &time) { m_startTime = time; }
-    
     QDateTime endTime() const { return m_endTime; }
     void setEndTime(const QDateTime &time) { m_endTime = time; }
     
@@ -94,7 +91,6 @@ private:
     qint64 m_speed;
     QString m_errorMessage;
     bool m_supportsResume;
-    QDateTime m_startTime;
     QDateTime m_endTime;
 };
 
