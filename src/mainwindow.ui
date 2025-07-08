@@ -208,8 +208,13 @@
                    <string>大小</string>
                   </property>
                  </column>
-                </widget>
-               </item>
+                 <column>
+                  <property name="text">
+                   <string>完成时间</string>
+                  </property>
+                 </column>
+                 </widget>
+                </item>
               </layout>
              </widget>
              <widget class="QWidget" name="tab_failed">
