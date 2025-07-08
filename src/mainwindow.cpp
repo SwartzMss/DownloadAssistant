@@ -97,8 +97,8 @@ void MainWindow::setupUI()
     statusBar()->showMessage(tr("就绪"));
 
     // 初始化已完成任务表格
-    ui->completedTable->setColumnCount(3);
-    ui->completedTable->setHorizontalHeaderLabels({tr("文件名"), tr("文件路径"), tr("大小")});
+    ui->completedTable->setColumnCount(4);
+    ui->completedTable->setHorizontalHeaderLabels({tr("文件名"), tr("文件路径"), tr("大小"), tr("完成时间")});
     ui->completedTable->setSelectionBehavior(QAbstractItemView::SelectRows);
     ui->completedTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
     ui->completedTable->setAlternatingRowColors(true);
@@ -106,10 +106,13 @@ void MainWindow::setupUI()
     ui->completedTable->horizontalHeader()->setSectionResizeMode(0, QHeaderView::ResizeToContents); // 文件名
     ui->completedTable->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Stretch);         // 文件路径
     ui->completedTable->horizontalHeader()->setSectionResizeMode(2, QHeaderView::ResizeToContents); // 大小
+    ui->completedTable->horizontalHeader()->setSectionResizeMode(3, QHeaderView::ResizeToContents); // 完成时间
 
     ui->completedTable->setTextElideMode(Qt::ElideMiddle);
     ui->completedTable->setWordWrap(false);
     ui->completedTable->horizontalHeader()->setMaximumSectionSize(400);
+    ui->completedTable->setSortingEnabled(true);
+    ui->completedTable->sortByColumn(3, Qt::DescendingOrder);
     // 右键菜单
     ui->completedTable->setContextMenuPolicy(Qt::CustomContextMenu);
     connect(ui->completedTable, &QTableWidget::customContextMenuRequested, this, [this](const QPoint &pos) {
@@ -548,6 +551,7 @@ void MainWindow::loadTasks()
         ui->completedTable->setItem(row, 0, nameItem);
         ui->completedTable->setItem(row, 1, new QTableWidgetItem(task->savePath()));
         ui->completedTable->setItem(row, 2, new QTableWidgetItem(formatBytes(task->downloadedSize())));
+        ui->completedTable->setItem(row, 3, new QTableWidgetItem(task->endTime().toString("yyyy-MM-dd HH:mm:ss")));
         LOG_INFO(QString("已插入到已完成任务表格 - ID: %1, 行: %2, 完成时间: %3")
                  .arg(task->id()).arg(row).arg(task->endTime().toString(Qt::ISODate)));
     }
