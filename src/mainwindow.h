@@ -66,7 +66,6 @@ private:
     void updateStatusBar();
     void onStartAllClicked();
     void onPauseAllClicked();
-    void onRemoveClicked();
     void onAllTasksCompleted();
     void showInfo(const QString &message);
     void showWarning(const QString &message);
