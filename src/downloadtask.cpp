@@ -1,7 +1,7 @@
 #include "downloadtask.h"
 #include <QDebug>
 #include <QFileInfo>
-#include <QUrl>
+#include "pathutils.h"
 #include <QUuid>
 #include "logger.h"
 
@@ -34,9 +34,13 @@ void DownloadTask::setUrl(const QString &url)
 {
     m_url = url;
     
-    // 从 URL 中提取文件名
-    QUrl urlObj(url);
-    QString fileName = urlObj.fileName();
+    // 从路径中提取文件名，避免 QUrl 误解析 '#' 等字符
+    QString uncPath = toUncPath(url);
+    QString fileName = QFileInfo(uncPath).fileName();
+    if (fileName.isEmpty()) {
+        // UNC 转换失败时退回使用原字符串解析
+        fileName = QFileInfo(url).fileName();
+    }
     if (fileName.isEmpty()) {
         fileName = "downloaded_file";
     }
