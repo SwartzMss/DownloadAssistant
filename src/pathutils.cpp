@@ -1,5 +1,5 @@
 #include "pathutils.h"
-#include <QUrl>
+
 
 QString toUncPath(QString path)
 {
@@ -7,12 +7,21 @@ QString toUncPath(QString path)
     path.remove('\n');
     path = path.trimmed();
     if (path.startsWith("smb://", Qt::CaseInsensitive)) {
-        QUrl u(path);
-        QString p = u.path();
-        if (p.startsWith('/'))
-            p.remove(0, 1);
-        p.replace('/', '\\');
-        return QStringLiteral("\\\\") + u.host() + QLatin1Char('\\') + p;
+        QString p = path.mid(6); // remove "smb://"
+        int slash = p.indexOf('/');
+        QString host;
+        QString rest;
+        if (slash >= 0) {
+            host = p.left(slash);
+            rest = p.mid(slash + 1);
+        } else {
+            host = p;
+        }
+        rest.replace('/', '\\');
+        if (!rest.isEmpty())
+            return QStringLiteral("\\\\") + host + QLatin1Char('\\') + rest;
+        else
+            return QStringLiteral("\\\\") + host + QLatin1Char('\\');
     }
     path.replace('/', '\\');
     return path;

@@ -483,11 +483,10 @@ void MainWindow::onDownloadDirectoryClicked(const QString &dirUrl)
 
     savePath = buildFinalSavePath(savePath);
 
-    QString dirName = QUrl(dirUrl).fileName();
+    QString dirName = QFileInfo(toUncPath(dirUrl)).fileName();
     if (dirName.isEmpty()) {
-        QUrl temp(dirUrl);
-        QString path = temp.path();
-        if (path.endsWith('/'))
+        QString path = toUncPath(dirUrl);
+        if (path.endsWith('/') || path.endsWith('\\'))
             path.chop(1);
         dirName = QFileInfo(path).fileName();
     }
